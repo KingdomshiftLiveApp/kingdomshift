@@ -466,19 +466,25 @@ function openStream(sid,role){
 function doOpenStream(sid,role){
   const p=$('page'),isHost=role==='host';
   p.innerHTML='<div class="sview"><div class="scont" id="zego"></div><button class="sx" onclick="'+(isHost?'endStream(\''+sid+'\')':'go(\'live\')')+'" style="'+(isHost?'top:12px;right:12px;background:var(--red);color:#fff':'top:12px;left:12px;background:rgba(0,0,0,.75);color:var(--text);border:1px solid var(--border);backdrop-filter:blur(8px)')+'">'+(isHost?'■ End Stream':'← Leave')+'</button></div>';
-  try{
-    const token=ZegoUIKitPrebuilt.generateKitTokenForTest(ZEGO_ID,ZEGO_SIGN,sid,ST.user.id,ST.profile?.display_name||'User');
-    const kit=ZegoUIKitPrebuilt.create(token);
-    kit.joinRoom({
-      container:$('zego'),
-      sharedLinks:isHost?[{name:'Watch on KingdomShift.Live',url:location.origin+'?s='+sid}]:[],
-      scenario:{mode:ZegoUIKitPrebuilt.LiveStreaming,config:{role:isHost?ZegoUIKitPrebuilt.Host:ZegoUIKitPrebuilt.Audience}},
-      showPreJoinView:false,turnOnCameraWhenJoining:isHost,turnOnMicrophoneWhenJoining:isHost,
-      showTextChat:true,showUserList:isHost,maxUsers:50000,
-      onLeaveRoom:()=>{if(isHost)endStream(sid);else go('live');}
-    });
-    if(isHost)toast('🔴 You are live!');
-  }catch(e){toast('Stream: '+(e.message||'starting'));}
+  // wait for the container to actually exist in the page before launching ZegoCloud
+  function launch(tries){
+    const box=$('zego');
+    if(!box){ if(tries>0){setTimeout(()=>launch(tries-1),100);return;} toast('Could not start stream — please retry'); return; }
+    try{
+      const token=ZegoUIKitPrebuilt.generateKitTokenForTest(ZEGO_ID,ZEGO_SIGN,sid,ST.user.id,ST.profile?.display_name||('User'+Math.floor(Math.random()*9999)));
+      const kit=ZegoUIKitPrebuilt.create(token);
+      kit.joinRoom({
+        container:box,
+        sharedLinks:isHost?[{name:'Watch on KingdomShift.Live',url:location.origin+'?s='+sid}]:[],
+        scenario:{mode:ZegoUIKitPrebuilt.LiveStreaming,config:{role:isHost?ZegoUIKitPrebuilt.Host:ZegoUIKitPrebuilt.Audience}},
+        showPreJoinView:false,turnOnCameraWhenJoining:isHost,turnOnMicrophoneWhenJoining:isHost,
+        showTextChat:true,showUserList:isHost,maxUsers:50000,
+        onLeaveRoom:()=>{if(isHost)endStream(sid);else go('live');}
+      });
+      if(isHost)toast('🔴 You are live!');
+    }catch(e){console.error('zego',e);toast('Stream error: '+(e.message||'retry'));}
+  }
+  requestAnimationFrame(()=>requestAnimationFrame(()=>launch(10)));
 }
 async function endStream(sid){try{await db.from('live_streams').update({status:'ended',ended_at:new Date().toISOString()}).eq('id',sid);}catch(e){}go('live');toast('Stream ended 🙏');}
 
