@@ -280,7 +280,7 @@ function showApp(){hide('loading');hide('auth');show('app');buildNav();render();
 
 // ═══ NAV ═══
 function go(tab,sub){
-  if(tab==='create'){toast('🎬 Upload coming soon');return;}
+  if(tab==='create'){showUpload();return;}
   clearQTimer();stopGifts();
   ST.tab=tab;ST.sub=sub||null;ST.battleView='home';
   buildNav();render();
@@ -404,6 +404,58 @@ function render(){
 async function fetchPosts(){
   try{const{data}=await db.from('videos').select('*,profiles(username,display_name,avatar,verified)').eq('status','published').order('created_at',{ascending:false}).limit(20);ST.posts=(data&&data.length)?data:DEMO_POSTS;}catch{ST.posts=DEMO_POSTS;}
 }
+
+// ═══ VIDEO UPLOAD ═══
+function showUpload(){
+  if(!ST.user){toast('Please sign in first');return;}
+  $('upmodal')?.remove();
+  const m=document.createElement('div');m.className='modbg';m.id='upmodal';
+  m.innerHTML='<div class="mod"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div class="mod-h">🎬 Upload Video</div><button class="mod-x" onclick="$(\'upmodal\').remove()">×</button></div>'+
+    '<div id="up-pick"><label style="display:block;border:2px dashed var(--border);border-radius:12px;padding:28px 14px;text-align:center;cursor:pointer;background:rgba(0,201,200,.03)"><div style="font-size:38px;margin-bottom:8px">📹</div><div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;margin-bottom:3px">Tap to choose a video</div><div style="font-size:11px;color:var(--muted)">MP4, MOV · up to ~50MB works best</div><input type="file" accept="video/*" style="display:none" onchange="pickVideo(this)"/></label></div>'+
+    '<div id="up-form" style="display:none"><div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:11px;font-size:12px;color:var(--teal)" id="up-fname">video selected</div>'+
+    '<label class="lbl">Caption</label><input class="inp" id="up-title" placeholder="Say something about your video..." style="margin-bottom:10px"/>'+
+    '<label class="lbl">Category</label><select class="inp" id="up-cat" style="margin-bottom:13px"><option>Faith</option><option>Worship</option><option>WealthShift</option><option>Teaching</option><option>Prophetic</option><option>Youth</option><option>Testimony</option></select>'+
+    '<button class="auth-btn" id="up-btn" onclick="doUpload()">⬆️ Post Video</button>'+
+    '<div id="up-prog" style="display:none;margin-top:11px"><div style="height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden"><div id="up-bar" style="height:100%;width:0;background:linear-gradient(90deg,var(--teal),var(--gold));border-radius:3px;transition:width .3s"></div></div><div id="up-pct" style="text-align:center;font-size:11px;color:var(--muted);margin-top:6px">Uploading...</div></div></div></div>';
+  m.addEventListener('click',e=>{if(e.target===m)m.remove();});
+  document.body.appendChild(m);
+}
+let pickedFile=null;
+function pickVideo(input){
+  const f=input.files&&input.files[0];
+  if(!f)return;
+  if(f.size>80*1024*1024){toast('That video is large — please pick one under ~50MB');return;}
+  pickedFile=f;
+  $('up-pick').style.display='none';
+  $('up-form').style.display='block';
+  $('up-fname').textContent='📹 '+f.name;
+}
+async function doUpload(){
+  if(!pickedFile){toast('Pick a video first');return;}
+  if(!ST.user){toast('Please sign in');return;}
+  const btn=$('up-btn');btn.disabled=true;btn.textContent='Uploading...';
+  $('up-prog').style.display='block';
+  const title=$('up-title')?.value||'New video';
+  const cat=$('up-cat')?.value||'Faith';
+  const ext=(pickedFile.name.split('.').pop()||'mp4').toLowerCase();
+  const path=ST.user.id+'/'+Date.now()+'.'+ext;
+  // fake-smooth progress (storage API doesn't stream progress in browser SDK)
+  let pct=0;const tick=setInterval(()=>{pct=Math.min(pct+Math.random()*12,90);$('up-bar').style.width=pct+'%';$('up-pct').textContent='Uploading... '+Math.round(pct)+'%';},250);
+  try{
+    const{error:upErr}=await db.storage.from('videos').upload(path,pickedFile,{cacheControl:'3600',upsert:false});
+    if(upErr)throw upErr;
+    const{data:pub}=db.storage.from('videos').getPublicUrl(path);
+    const videoUrl=pub.publicUrl;
+    const{error:dbErr}=await db.from('videos').insert({creator_id:ST.user.id,title:title,description:title,video_url:videoUrl,category:cat,status:'published'});
+    if(dbErr)throw dbErr;
+    clearInterval(tick);$('up-bar').style.width='100%';$('up-pct').textContent='Done! 🎉';
+    setTimeout(()=>{$('upmodal')?.remove();pickedFile=null;ST.posts=[];toast('✅ Video posted!');go('feed');},700);
+  }catch(e){
+    clearInterval(tick);console.error('upload',e);
+    $('up-prog').style.display='none';btn.disabled=false;btn.textContent='⬆️ Post Video';
+    toast('Upload failed: '+(e.message||'try a smaller video'));
+  }
+}
 function rFeed(p){
   if(!ST.posts.length)fetchPosts().then(render);
   const posts=ST.posts.length?ST.posts:DEMO_POSTS;
@@ -418,7 +470,11 @@ function rFeed(p){
       const tx=o.description||o.txt||'';
       const lk=o.lk||o.likes||0,cm=o.cm||o.comments||0,sh=o.sh||o.shares||0;
       const ct=o.category||o.cat||'Faith',isL=o.type==='live';
-      return '<div class="post" style="animation-delay:'+(i*.05)+'s"><div class="po-h"><div class="po-av">'+av+'</div><div style="flex:1"><div class="po-nm">'+nm+(vf?'<span style="color:var(--teal);font-size:10px">✓</span>':'')+'</div><div class="po-mt">'+hd+' · '+(o.t||'now')+'</div></div><button class="po-fol '+(ST.following[o.id]?'on':'')+'" onclick="toggleFollow('+o.id+',\''+esc(nm)+'\')">'+(ST.following[o.id]?'Following':'Follow')+'</button></div><div class="po-md" onclick="toast(\'▶ Playing\')"><div class="po-play">▶</div>'+(isL?'<div class="po-lb"><div class="ld"></div>LIVE</div>':'')+'<div class="po-ct">'+ct+'</div>'+(o.dur?'<div class="po-dr">'+o.dur+'</div>':'')+'</div><div class="po-tx">'+tx+'</div><div class="po-ac"><button class="ac" onclick="toggleLike('+o.id+','+lk+')"><span class="ac-i">'+(ST.liked[o.id]?'❤️':'🤍')+'</span><span id="lk'+o.id+'">'+(lk+(ST.liked[o.id]?1:0)).toLocaleString()+'</span></button><button class="ac" onclick="toast(\'💬 Comments\')"><span class="ac-i">💬</span><span>'+cm.toLocaleString()+'</span></button><button class="ac" onclick="toast(\'↗️ Shared!\')"><span class="ac-i">↗️</span><span>'+sh.toLocaleString()+'</span></button><button class="ac-sv" onclick="toggleSave('+o.id+')">'+(ST.saved[o.id]?'🔖':'🏷️')+'</button></div></div>';
+      const vurl=o.video_url||'';
+      const media=vurl
+        ? '<div class="po-md" style="padding:0"><video src="'+vurl+'" controls playsinline preload="metadata" style="width:100%;height:100%;object-fit:cover;background:#000"></video><div class="po-ct" style="pointer-events:none">'+ct+'</div></div>'
+        : '<div class="po-md" onclick="toast(\'▶ Demo clip\')"><div class="po-play">▶</div>'+(isL?'<div class="po-lb"><div class="ld"></div>LIVE</div>':'')+'<div class="po-ct">'+ct+'</div>'+(o.dur?'<div class="po-dr">'+o.dur+'</div>':'')+'</div>';
+      return '<div class="post" style="animation-delay:'+(i*.05)+'s"><div class="po-h"><div class="po-av">'+av+'</div><div style="flex:1"><div class="po-nm">'+nm+(vf?'<span style="color:var(--teal);font-size:10px">✓</span>':'')+'</div><div class="po-mt">'+hd+' · '+(o.t||'now')+'</div></div><button class="po-fol '+(ST.following[o.id]?'on':'')+'" onclick="toggleFollow('+o.id+',\''+esc(nm)+'\')">'+(ST.following[o.id]?'Following':'Follow')+'</button></div>'+media+'<div class="po-tx">'+tx+'</div><div class="po-ac"><button class="ac" onclick="toggleLike('+o.id+','+lk+')"><span class="ac-i">'+(ST.liked[o.id]?'❤️':'🤍')+'</span><span id="lk'+o.id+'">'+(lk+(ST.liked[o.id]?1:0)).toLocaleString()+'</span></button><button class="ac" onclick="toast(\'💬 Comments\')"><span class="ac-i">💬</span><span>'+cm.toLocaleString()+'</span></button><button class="ac" onclick="toast(\'↗️ Shared!\')"><span class="ac-i">↗️</span><span>'+sh.toLocaleString()+'</span></button><button class="ac-sv" onclick="toggleSave('+o.id+')">'+(ST.saved[o.id]?'🔖':'🏷️')+'</button></div></div>';
     }).join('')+
     '<div style="padding:30px;text-align:center;font-size:11px;color:var(--dim);font-style:italic">All caught up · "He gives you the ability to produce wealth." — Deut. 8:18</div>';
 }
