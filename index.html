@@ -461,7 +461,7 @@ function openStream(sid,role){
       container:$('zego'),
       sharedLinks:isHost?[{name:'Watch on KingdomShift.Live',url:location.origin+'?s='+sid}]:[],
       scenario:{mode:ZegoUIKitPrebuilt.LiveStreaming,config:{role:isHost?ZegoUIKitPrebuilt.Host:ZegoUIKitPrebuilt.Audience}},
-      showPreJoinView:isHost,turnOnCameraWhenJoining:isHost,turnOnMicrophoneWhenJoining:isHost,
+      showPreJoinView:false,turnOnCameraWhenJoining:isHost,turnOnMicrophoneWhenJoining:isHost,
       showTextChat:true,showUserList:isHost,maxUsers:50000,
       onLeaveRoom:()=>{if(isHost)endStream(sid);else go('live');}
     });
