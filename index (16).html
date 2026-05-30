@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+<meta name="theme-color" content="#050505"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<link rel="manifest" href="./manifest.json"/>
+<link rel="icon" href="./logo.png"/>
+<link rel="apple-touch-icon" href="./logo.png"/>
+<title>KingdomShift.Live</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://js.stripe.com/v3/"></script>
+<script src="https://unpkg.com/@zegocloud/zego-uikit-prebuilt/zego-uikit-prebuilt.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+:root{--teal:#00C9C8;--gold:#C9A227;--gold2:#F0C040;--pink:#FF2D9B;--black:#050505;--dark:#0A0A0A;--card:#101012;--card2:#16161A;--text:#F0EDE6;--muted:#7E8C99;--dim:#3A4651;--green:#00D46A;--red:#FF3B55;--purple:#9B5DE5;--border:rgba(0,201,200,.1);--glass:rgba(255,255,255,.03);}
+html,body{height:100%;background:var(--black);color:var(--text);font-family:'DM Sans',sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden;}
+::-webkit-scrollbar{width:0;display:none;}
+button{cursor:pointer;font-family:'DM Sans',sans-serif;border:none;background:none;color:inherit;}
+input,textarea{font-family:'DM Sans',sans-serif;}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pop{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.15}}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes toast{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes giftUp{0%{transform:translateY(0) scale(.6);opacity:0}15%{opacity:1;transform:translateY(-20px) scale(1)}80%{opacity:1}100%{transform:translateY(-220px) scale(.7);opacity:0}}
+@keyframes heartBurst{0%{transform:scale(0);opacity:1}50%{transform:scale(1.3)}100%{transform:scale(1);opacity:1}}
+
+#loading{position:fixed;inset:0;background:var(--black);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;}
+.ld-logo{width:66px;height:66px;border-radius:16px;overflow:hidden;border:2px solid rgba(0,201,200,.3);box-shadow:0 0 40px rgba(0,201,200,.2);animation:float 2s ease infinite;margin-bottom:14px;}
+.ld-logo img{width:100%;height:100%;object-fit:cover;}
+.ld-sp{width:24px;height:24px;border:2.5px solid rgba(0,201,200,.15);border-top-color:var(--teal);border-radius:50%;animation:spin 1s linear infinite;margin-bottom:8px;}
+.ld-tx{font-family:'Syne',sans-serif;font-size:10px;color:var(--muted);letter-spacing:.15em;text-transform:uppercase;}
+
+#auth{display:none;height:100vh;overflow-y:auto;background:radial-gradient(ellipse 70% 55% at 50% 38%,#0A1010,var(--black));}
+.auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+.auth-box{background:#0A0A0C;border:1px solid rgba(0,201,200,.14);border-radius:20px;padding:30px;max-width:370px;width:100%;box-shadow:0 40px 80px rgba(0,0,0,.8);}
+.auth-logo{width:54px;height:54px;border-radius:13px;overflow:hidden;border:1px solid rgba(0,201,200,.25);margin:0 auto 12px;display:block;}
+.auth-logo img{width:100%;height:100%;object-fit:cover;}
+.auth-h{font-family:'Syne',sans-serif;font-size:19px;font-weight:800;text-align:center;background:linear-gradient(90deg,var(--teal),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:3px;}
+.auth-s{font-size:12px;color:var(--muted);text-align:center;margin-bottom:20px;}
+.auth-lbl{font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:.13em;color:var(--muted);text-transform:uppercase;display:block;margin:11px 0 5px;}
+.auth-inp{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:13px;outline:none;}
+.auth-inp:focus{border-color:rgba(0,201,200,.45);}
+.auth-inp::placeholder{color:var(--dim);}
+.auth-btn{width:100%;margin-top:14px;background:linear-gradient(135deg,var(--teal),var(--gold) 220%);color:var(--black);border-radius:8px;padding:12px;font-family:'Syne',sans-serif;font-size:12px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;box-shadow:0 4px 18px rgba(0,201,200,.2);}
+.auth-btn:disabled{opacity:.5;}
+.auth-msg{border-radius:7px;padding:8px 11px;font-size:11px;margin-top:9px;display:none;}
+.auth-msg.err{background:rgba(255,59,85,.08);border:1px solid rgba(255,59,85,.2);color:var(--red);}
+.auth-msg.ok{background:rgba(0,212,106,.08);border:1px solid rgba(0,212,106,.2);color:var(--green);}
+.auth-sw{text-align:center;margin-top:12px;font-size:12px;color:var(--muted);}
+.auth-sw a{color:var(--teal);cursor:pointer;font-weight:600;}
+.auth-promise{background:rgba(0,201,200,.04);border:1px solid rgba(0,201,200,.08);border-radius:8px;padding:9px;margin-top:12px;font-size:10px;color:var(--dim);line-height:1.7;text-align:center;}
+
+#app{display:none;height:100vh;}
+.shell{display:flex;height:100vh;overflow:hidden;}
+.sb{width:218px;flex-shrink:0;background:var(--dark);border-right:1px solid var(--border);display:flex;flex-direction:column;}
+.sb-head{padding:14px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px;}
+.sb-logo{width:32px;height:32px;border-radius:8px;overflow:hidden;border:1px solid rgba(0,201,200,.2);flex-shrink:0;}
+.sb-logo img{width:100%;height:100%;object-fit:cover;}
+.sb-tt{font-family:'Syne',sans-serif;font-size:12px;font-weight:800;background:linear-gradient(135deg,var(--teal),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.sb-sub{font-size:8px;color:var(--teal);letter-spacing:.12em;text-transform:uppercase;opacity:.7;margin-top:1px;}
+.sb-nav{flex:1;padding:9px 7px;overflow-y:auto;}
+.sb-cat{font-size:9px;font-weight:700;letter-spacing:.15em;color:var(--dim);text-transform:uppercase;padding:9px 7px 4px;}
+.sb-item{display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:9px;cursor:pointer;margin-bottom:1px;position:relative;transition:background .15s;}
+.sb-item:hover{background:rgba(0,201,200,.06);}
+.sb-item.on{background:rgba(0,201,200,.08);border:1px solid rgba(0,201,200,.14);}
+.sb-item.on::before{content:'';position:absolute;left:0;top:25%;bottom:25%;width:2px;border-radius:1px;background:linear-gradient(var(--teal),var(--gold));}
+.sb-item.on .sb-lb{color:var(--teal);}
+.sb-ic{font-size:15px;width:19px;text-align:center;}
+.sb-lb{font-family:'Syne',sans-serif;font-size:11px;font-weight:600;color:var(--muted);white-space:nowrap;}
+.sb-tag{margin-left:auto;border-radius:100px;padding:1px 5px;font-size:8px;font-weight:700;}
+.sb-tag.gold{background:var(--gold);color:var(--black);}
+.sb-foot{padding:9px;border-top:1px solid var(--border);}
+.sb-user{display:flex;align-items:center;gap:8px;padding:8px 9px;border-radius:9px;cursor:pointer;background:var(--glass);border:1px solid var(--border);}
+.sb-uav{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--teal),var(--gold));display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;}
+.sb-un{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;}
+.sb-st{font-size:9px;color:var(--teal);}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
+.tbar{height:48px;flex-shrink:0;background:rgba(5,5,5,.97);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 11px;gap:8px;z-index:20;}
+.tb-menu{display:none;width:28px;height:28px;border-radius:7px;background:var(--glass);border:1px solid var(--border);align-items:center;justify-content:center;font-size:14px;color:var(--muted);}
+.tb-tt{font-family:'Syne',sans-serif;font-size:14px;font-weight:800;background:linear-gradient(90deg,var(--teal),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.tb-r{display:flex;gap:5px;align-items:center;margin-left:auto;}
+.tb-b{width:28px;height:28px;border-radius:7px;background:var(--glass);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:13px;position:relative;}
+.tb-dot{position:absolute;top:-2px;right:-2px;width:11px;height:11px;border-radius:50%;background:var(--pink);border:2px solid var(--black);font-size:7px;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;}
+.lp{display:flex;align-items:center;gap:4px;background:rgba(255,45,155,.1);border:1px solid rgba(255,45,155,.2);border-radius:20px;padding:3px 9px;font-family:'Syne',sans-serif;font-size:9px;font-weight:700;color:var(--pink);}
+.ld{width:5px;height:5px;border-radius:50%;background:var(--pink);animation:blink 1s ease infinite;}
+.page{flex:1;overflow-y:auto;overflow-x:hidden;}
+.bnav{display:none;background:rgba(5,5,5,.98);backdrop-filter:blur(20px);border-top:1px solid var(--border);flex-shrink:0;}
+.bn-row{display:flex;padding-bottom:env(safe-area-inset-bottom,0);}
+.bn-i{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 0 4px;cursor:pointer;opacity:.4;transition:opacity .15s;}
+.bn-i.on{opacity:1;}
+.bn-i.on .bn-l{color:var(--teal);}
+.bn-ic{font-size:19px;}
+.bn-l{font-family:'Syne',sans-serif;font-size:9px;font-weight:700;color:var(--muted);}
+.bn-add{width:42px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--teal),var(--gold));display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--black);font-weight:700;}
+.drwbg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:300;}
+.drwbg.on{display:block;}
+.drw{position:fixed;top:0;left:-225px;width:225px;height:100%;background:var(--dark);border-right:1px solid var(--border);z-index:301;transition:left .25s;overflow-y:auto;}
+.drw.on{left:0;}
+.toast{position:fixed;bottom:76px;left:50%;background:linear-gradient(135deg,var(--teal),var(--gold));color:var(--black);padding:8px 18px;border-radius:24px;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;white-space:nowrap;z-index:9999;pointer-events:none;animation:toast .2s ease;box-shadow:0 5px 20px rgba(0,201,200,.3);}
+@media(max-width:860px){.sb{display:none;}.tb-menu{display:flex;}.bnav{display:block;}}
+</style>
+</head>
+<body>
+<div id="loading"><div class="ld-logo"><img src="./logo.png" onerror="this.parentElement.style.background='linear-gradient(135deg,#00C9C8,#C9A227)'"/></div><div class="ld-sp"></div><div class="ld-tx">KingdomShift.Live</div></div>
+<div id="auth"><div class="auth-wrap"><div class="auth-box">
+<div class="auth-logo"><img src="./logo.png" onerror="this.parentElement.style.background='linear-gradient(135deg,#00C9C8,#C9A227)'"/></div>
+<div class="auth-h">KingdomShift.Live</div>
+<div class="auth-s" id="au-s">Sign in to your account</div>
+<div class="auth-msg err" id="au-err"></div>
+<div class="auth-msg ok" id="au-ok"></div>
+<div id="au-form"></div>
+<div class="auth-promise">Free to join · Data never sold · Withdraw after 5K followers</div>
+</div></div></div>
+<div id="app"><div class="shell">
+<aside class="sb">
+<div class="sb-head"><div class="sb-logo"><img src="./logo.png" onerror="this.parentElement.style.background='linear-gradient(135deg,#00C9C8,#C9A227)'"/></div><div><div class="sb-tt">KingdomShift.Live</div><div class="sb-sub">Equip · Empower · Expand</div></div></div>
+<nav class="sb-nav" id="sbnav"></nav>
+<div class="sb-foot"><div class="sb-user" onclick="go('profile')"><div class="sb-uav" id="sbuav">👤</div><div><div class="sb-un" id="sbun">Loading...</div><div class="sb-st">● Online</div></div></div></div>
+</aside>
+<div class="main">
+<div class="tbar"><div class="tb-menu" onclick="drawer()">☰</div><div class="tb-tt" id="tbtt">Feed</div><div class="tb-r"><div id="lpw" style="display:none"><div class="lp"><div class="ld"></div>LIVE</div></div><div class="tb-b" onclick="toast('🔔 Notifications')">🔔<div class="tb-dot">3</div></div><div class="tb-b" onclick="toast('💬 Messages')">💬</div><div class="tb-b" onclick="go('search')">🔍</div></div></div>
+<div class="page" id="page"></div>
+<div class="bnav"><div class="bn-row" id="bnrow"></div></div>
+</div>
+</div></div>
+<div class="drwbg" id="drwbg" onclick="drawer()"></div>
+<div class="drw" id="drw"><div class="sb-head" style="padding:14px"><div class="sb-logo" style="width:32px;height:32px"><img src="./logo.png"/></div><div class="sb-tt" style="font-size:12px">KingdomShift.Live</div></div><nav class="sb-nav" id="drwnav"></nav></div>
+<script>
+// ═══ CREDENTIALS (your NEW Supabase) ═══
+const SB_URL = 'https://tssxbezcrcxlkraxnnan.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRzc3hiZXpjcmN4bGtyYXhubmFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwODYxNDcsImV4cCI6MjA5NTY2MjE0N30.fIbNP21GVl7EXwctBnuVYzMOYNLhum0FFlJygiqARAU';
+const STRIPE_PK = 'pk_live_51RF3hvIrxXWf5kWlS44TLxP5626fVOquwJtxSY902PkDcyDekQgPM5dhsvZTwH96Z30XYKjUXooLotCiZbJ4xWqj00fFVvRabI';
+const ZEGO_ID = 1974018811;
+const ZEGO_SIGN = 'b8fcc1eede562f781a1310a6c1fc38696d43f8c854a3f9534c509eb7fba4fa9b';
+
+const db = supabase.createClient(SB_URL, SB_KEY);
+let stripeClient = null;
+try { stripeClient = Stripe(STRIPE_PK); } catch(e){}
+
+// ═══ STATE ═══
+const ST = {
+  user:null, profile:null, tab:'feed', sub:null,
+  coins:0, isPro:false, liked:{}, saved:{}, following:{},
+  cart:0, shopFilter:'All', quiz:null, qTimer:null,
+  battleView:'home', battleMode:null, authMode:'login', authBusy:false,
+  posts:[], postsLoaded:false, shopItems:[], giftTimer:null,
+  notifs:{follower:true,gifts:true,comments:true,messages:true},
+  privacy:{priv:false,online:true,msgs:true,comments:true},
+};
+
+// ═══ DATA ═══
+const GIFTS=[
+  {n:'Rose',i:'🌹',c:5,col:'#E74C3C'},{n:'Heart',i:'❤️',c:10,col:'#FF2D9B'},
+  {n:'Fire',i:'🔥',c:25,col:'#FF8C00'},{n:'Star',i:'⭐',c:50,col:'#F0C040'},
+  {n:'Crown',i:'👑',c:100,col:'#C9A227'},{n:'Diamond',i:'💎',c:500,col:'#00C9C8'},
+  {n:'Kingdom',i:'🏰',c:1000,col:'#9B5DE5'},{n:'GLORY',i:'✨',c:9999,col:'#FFD700'}
+];
+const DEMO_POSTS=[
+  {id:1,u:'Pastor_Emmanuel',h:'@pastor_em',av:'👨🏿‍💼',v:true,txt:'God said it. I believe it. Your breakthrough is not delayed — it is divine timing. 🙏🔥',lk:2841,cm:394,sh:1203,t:'2m',type:'video',dur:'1:24',cat:'Faith'},
+  {id:2,u:'WorshipLeader_Zoe',h:'@zoe_worship',av:'👩🏽‍🎤',v:true,txt:'New worship cover dropping at midnight 🎵✨',lk:1205,cm:187,sh:432,t:'8m',type:'video',dur:'3:47',cat:'Worship'},
+  {id:3,u:'KingdomFinance',h:'@kingdom_finance',av:'👨🏾‍💻',v:false,txt:'5 Kingdom principles for building generational wealth. 💰👑',lk:3672,cm:521,sh:1840,t:'15m',type:'video',dur:'8:32',cat:'WealthShift'},
+  {id:4,u:'Apostle_Grace',h:'@apostle_grace',av:'👩🏾‍⚖️',v:true,txt:'LIVE: Walking In Dominion 🔥',lk:892,cm:134,sh:267,t:'32m',type:'live',cat:'Teaching'},
+  {id:5,u:'ProphetDan',h:'@prophet_dan',av:'👴🏾',v:false,txt:'The vision is for an appointed time. ✝️',lk:1340,cm:208,sh:445,t:'45m',type:'video',dur:'5:22',cat:'Prophetic'},
+  {id:6,u:'YouthMinistry',h:'@youth_uk',av:'👨🏼‍🎓',v:false,txt:'30-Day Proverbs Challenge — Day 12. 📖',lk:445,cm:89,sh:123,t:'1h',type:'video',dur:'4:15',cat:'Youth'}
+];
+const DEMO_SHOP=[
+  {id:1,nm:'Kingdom Financial Blueprint',tp:'eBook',pr:27,cr:'KingdomFinance',ic:'📚'},
+  {id:2,nm:'30-Day Prayer Journal',tp:'Digital',pr:19,cr:'Apostle_Grace',ic:'📔'},
+  {id:3,nm:'WealthShift Masterclass',tp:'Course',pr:97,cr:'KingdomFinance',ic:'🎓'},
+  {id:4,nm:'Kingdom Identity Hoodie',tp:'Merch',pr:45,cr:'YouthMinistry',ic:'👕'},
+  {id:5,nm:'Revival Conference Ticket',tp:'Event',pr:35,cr:'Pastor_Emmanuel',ic:'🎫'},
+  {id:6,nm:'1-on-1 Spiritual Coaching',tp:'Coaching',pr:150,cr:'Apostle_Grace',ic:'🤝'}
+];
+const COIN_PKGS=[
+  {id:'c100',lbl:'Starter',coins:100,bonus:0,pr:0.99},{id:'c500',lbl:'Popular',coins:500,bonus:50,pr:4.99},
+  {id:'c1200',lbl:'Value',coins:1200,bonus:200,pr:9.99},{id:'c3500',lbl:'Pro',coins:3500,bonus:700,pr:24.99},
+  {id:'c7000',lbl:'Kingdom',coins:7000,bonus:1500,pr:49.99},{id:'c15k',lbl:'Anointed',coins:15000,bonus:5000,pr:99.99}
+];
+const QUIZ_QS=[
+  {q:"Who was thrown into the lions' den?",a:1,opts:['Moses','Daniel','Elijah','Jonah'],v:'Daniel 6:16',pts:100},
+  {q:'How many days did Jesus fast?',a:2,opts:['14','21','40','30'],v:'Matthew 4:2',pts:100},
+  {q:'First king of Israel?',a:0,opts:['Saul','David','Solomon','Samuel'],v:'1 Samuel 10:24',pts:100},
+  {q:'Faith without ___ is dead.',a:2,opts:['prayer','love','works','hope'],v:'James 2:17',pts:100},
+  {q:'Borrower is ___ to the lender.',a:0,opts:['servant','wise','blessed','free'],v:'Proverbs 22:7',pts:150},
+  {q:'Faith comes by hearing, hearing by ___',a:0,opts:['Word of God','prayer','fasting','worship'],v:'Romans 10:17',pts:100},
+  {q:'Shortest Bible verse?',a:0,opts:['Jesus wept','I am','Fear not','Be still'],v:'John 11:35',pts:200},
+  {q:'Who built the ark?',a:2,opts:['Moses','Abraham','Noah','Isaac'],v:'Genesis 6:14',pts:100}
+];
+const NAV=[
+  {id:'feed',ic:'🏠',lb:'Feed',cat:'MAIN'},{id:'live',ic:'🔴',lb:'Live',cat:null},
+  {id:'create',ic:'➕',lb:'Upload Video',cat:null},
+  {id:'shop',ic:'🛍️',lb:'AuthorityShop',cat:null},{id:'wealth',ic:'💰',lb:'WealthShift',cat:null},
+  {id:'battles',ic:'🧠',lb:'Brain Battles',cat:null},{id:'safe',ic:'🛡️',lb:'Safe Stream',cat:'COMMUNITY'},
+  {id:'profile',ic:'👤',lb:'Profile',cat:'ACCOUNT'},{id:'settings',ic:'⚙️',lb:'Settings',cat:null},
+  {id:'admin',ic:'🔐',lb:'Admin Panel',cat:'PLATFORM'}
+];
+const MNAV=[{id:'feed',ic:'🏠',lb:'Feed'},{id:'live',ic:'🔴',lb:'Live'},{id:'create',ic:'➕',lb:''},{id:'battles',ic:'🧠',lb:'Battles'},{id:'profile',ic:'👤',lb:'Me'}];
+
+// ═══ HELPERS ═══
+function $(id){return document.getElementById(id);}
+function hide(id){const e=$(id);if(e)e.style.display='none';}
+function show(id,d){const e=$(id);if(e)e.style.display=d||'block';}
+function toast(m){document.querySelectorAll('.toast').forEach(t=>t.remove());const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2200);}
+function esc(s){return(s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');}
+
+// ═══ BOOT ═══
+async function boot(){
+  try{
+    const{data:{session}}=await db.auth.getSession();
+    if(session){ST.user=session.user;await loadProfile();showApp();}
+    else showAuth('login');
+  }catch(e){console.error('boot',e);showAuth('login');}
+  hide('loading');
+  db.auth.onAuthStateChange(async(ev,session)=>{
+    if(ev==='SIGNED_IN'&&session){ST.user=session.user;await loadProfile();showApp();}
+    else if(ev==='SIGNED_OUT'){ST.user=null;ST.profile=null;showAuth('login');}
+  });
+}
+
+async function loadProfile(){
+  try{
+    const{data}=await db.from('profiles').select('*').eq('id',ST.user.id).maybeSingle();
+    if(data){
+      ST.profile=data;ST.coins=data.coins||0;ST.isPro=data.is_pro||false;
+      if(data.notif_settings&&Object.keys(data.notif_settings).length)ST.notifs={...ST.notifs,...data.notif_settings};
+      if(data.privacy_settings&&Object.keys(data.privacy_settings).length)ST.privacy={...ST.privacy,...data.privacy_settings};
+      $('sbun').textContent=data.display_name||data.username||'Creator';
+      $('sbuav').textContent=data.avatar||'👤';
+    }else{
+      // trigger creates profile server-side; if not present yet, show defaults
+      $('sbun').textContent=ST.user.email.split('@')[0];
+    }
+  }catch(e){console.log('profile',e);$('sbun').textContent='Creator';}
+}
+
+// ═══ AUTH ═══
+async function doSignUp(){
+  if(ST.authBusy)return;
+  const em=$('a-email')?.value?.trim(),pw=$('a-pass')?.value,un=$('a-user')?.value?.trim();
+  if(!em||!pw||!un){authMsg('err','Please fill in all fields');return;}
+  if(pw.length<6){authMsg('err','Password must be at least 6 characters');return;}
+  authBusy(true);
+  const{error}=await db.auth.signUp({email:em,password:pw,options:{data:{username:un,display_name:un}}});
+  authBusy(false);
+  if(error)authMsg('err',error.message);
+  else authMsg('ok','✅ Check your email to confirm your account, then sign in');
+}
+async function doSignIn(){
+  if(ST.authBusy)return;
+  const em=$('a-email')?.value?.trim(),pw=$('a-pass')?.value;
+  if(!em||!pw){authMsg('err','Please enter your email and password');return;}
+  authBusy(true);
+  const{error}=await db.auth.signInWithPassword({email:em,password:pw});
+  authBusy(false);
+  if(error)authMsg('err',error.message);
+}
+async function doSignOut(){await db.auth.signOut();toast('Signed out');}
+function authMsg(t,m){$('au-err').style.display=t==='err'?'block':'none';$('au-ok').style.display=t==='ok'?'block':'none';$(t==='err'?'au-err':'au-ok').textContent=m;}
+function authBusy(v){ST.authBusy=v;const b=$('a-btn');if(b){b.disabled=v;b.textContent=v?'Please wait...':(ST.authMode==='login'?'Sign In →':'Create Free Account →');}}
+
+function showAuth(mode){
+  ST.authMode=mode;hide('loading');show('auth');hide('app');
+  $('au-s').textContent=mode==='login'?'Sign in to your account':'Create your free account';
+  $('au-err').style.display='none';$('au-ok').style.display='none';
+  const il=mode==='login';
+  $('au-form').innerHTML=
+    (!il?'<label class="auth-lbl">Username</label><input class="auth-inp" id="a-user" placeholder="your_kingdom_name"/>':'')+
+    '<label class="auth-lbl">Email</label><input class="auth-inp" id="a-email" type="email" placeholder="you@email.com"/>'+
+    '<label class="auth-lbl">Password</label><input class="auth-inp" id="a-pass" type="password" placeholder="'+(il?'Your password':'Min. 6 characters')+'" onkeydown="if(event.key===\'Enter\')'+(il?'doSignIn':'doSignUp')+'()"/>'+
+    '<button class="auth-btn" id="a-btn" onclick="'+(il?'doSignIn':'doSignUp')+'()">'+(il?'Sign In →':'Create Free Account →')+'</button>'+
+    '<div class="auth-sw">'+(il?'New here? <a onclick="showAuth(\'register\')">Join Free</a>':'Have an account? <a onclick="showAuth(\'login\')">Sign In</a>')+'</div>';
+}
+
+function showApp(){hide('loading');hide('auth');show('app');buildNav();render();}
+
+// ═══ NAV ═══
+function go(tab,sub){
+  if(tab==='create'){showUpload();return;}
+  clearQTimer();stopGifts();
+  ST.tab=tab;ST.sub=sub||null;ST.battleView='home';
+  buildNav();render();
+  const p=$('page');if(p)p.scrollTop=0;
+  drawer(false);
+}
+function buildNav(){
+  const f=NAV.find(n=>n.id===ST.tab);
+  $('tbtt').textContent=ST.sub?ST.sub.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()):(f?f.lb:'KingdomShift.Live');
+  $('lpw').style.display=ST.tab==='live'?'flex':'none';
+  ['sbnav','drwnav'].forEach(id=>{
+    const nav=$(id);if(!nav)return;let lc=null,h='';
+    NAV.forEach(n=>{
+      if(n.cat&&n.cat!==lc){h+='<div class="sb-cat">'+n.cat+'</div>';lc=n.cat;}
+      const on=ST.tab===n.id&&!ST.sub;
+      h+='<div class="sb-item '+(on?'on':'')+'" onclick="go(\''+n.id+'\')"><span class="sb-ic">'+n.ic+'</span><span class="sb-lb">'+n.lb+'</span>'+(n.id==='admin'?'<span class="sb-tag gold">ADMIN</span>':'')+'</div>';
+    });
+    nav.innerHTML=h;
+  });
+  const bn=$('bnrow');if(bn)bn.innerHTML=MNAV.map(n=>n.id==='create'?'<div class="bn-i" onclick="go(\'create\')" style="opacity:1"><div class="bn-add">➕</div></div>':'<div class="bn-i '+(ST.tab===n.id?'on':'')+'" onclick="go(\''+n.id+'\')"><span class="bn-ic">'+n.ic+'</span><span class="bn-l">'+n.lb+'</span></div>').join('');
+}
+function drawer(force){const bg=$('drwbg'),d=$('drw');const o=force!==undefined?force:!d.classList.contains('on');d.classList.toggle('on',o);bg.classList.toggle('on',o);}
+
+// ═══ ROUTER ═══
+function render(){
+  const p=$('page');if(!p)return;
+  const subs={privacy_policy:rPrivacy,terms_of_service:rTerms,creator_agreement:rCreator,live_streaming_guide:rGuide,notification_settings:rNotifSet,privacy_settings:rPrivSet,delete_account:rDelete,child_safety:rChild};
+  if(ST.sub&&subs[ST.sub]){subs[ST.sub](p);return;}
+  const pages={feed:rFeed,live:rLive,shop:rShop,wealth:rWealth,safe:rSafe,battles:rBattles,profile:rProfile,settings:rSettings,admin:rAdmin,search:rSearch};
+  if(pages[ST.tab])pages[ST.tab](p);
+}
+</script>
+<style>
+.stories{display:flex;gap:9px;padding:10px 11px;overflow-x:auto;border-bottom:1px solid var(--border);}
+.story{display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0;cursor:pointer;}
+.st-ring{width:50px;height:50px;border-radius:50%;padding:2px;background:linear-gradient(135deg,var(--teal),var(--gold));}
+.st-in{width:100%;height:100%;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:20px;border:2px solid var(--black);}
+.st-nm{font-family:'Syne',sans-serif;font-size:9px;color:var(--muted);max-width:50px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+.post{background:var(--card);border-bottom:1px solid rgba(255,255,255,.04);animation:fadeUp .3s ease both;}
+.po-h{padding:10px 11px 8px;display:flex;align-items:center;gap:8px;}
+.po-av{width:34px;height:34px;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;border:1.5px solid rgba(0,201,200,.12);}
+.po-nm{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;display:flex;align-items:center;gap:4px;}
+.po-mt{font-size:10px;color:var(--muted);}
+.po-fol{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;padding:4px 11px;border-radius:20px;border:1px solid rgba(0,201,200,.2);background:transparent;color:var(--teal);}
+.po-fol.on{background:rgba(0,201,200,.09);}
+.po-md{width:100%;aspect-ratio:16/9;background:linear-gradient(135deg,#080E0E,var(--card2));display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer;}
+.po-play{width:44px;height:44px;border-radius:50%;background:rgba(0,0,0,.65);backdrop-filter:blur(8px);border:2px solid var(--teal);display:flex;align-items:center;justify-content:center;font-size:17px;}
+.po-lb{position:absolute;top:8px;left:8px;background:var(--pink);border-radius:20px;padding:2px 8px;font-family:'Syne',sans-serif;font-size:8px;font-weight:700;color:#fff;display:flex;align-items:center;gap:3px;}
+.po-ct{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.75);border:1px solid rgba(201,162,39,.2);border-radius:20px;padding:2px 8px;font-family:'Syne',sans-serif;font-size:8px;font-weight:700;color:var(--gold);}
+.po-dr{position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,.75);border-radius:5px;padding:2px 6px;font-size:9px;color:#fff;}
+.po-tx{padding:7px 11px;font-size:13px;line-height:1.6;font-weight:300;}
+.po-ac{padding:6px 11px 10px;display:flex;align-items:center;gap:12px;}
+.ac{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted);}
+.ac:active{transform:scale(.82);}
+.ac-i{font-size:16px;}
+.ac-sv{margin-left:auto;font-size:18px;}
+.lhero{background:linear-gradient(135deg,#060D0D,var(--black));border-bottom:1px solid var(--border);padding:26px 14px;text-align:center;}
+.lh-ic{font-size:42px;margin-bottom:9px;filter:drop-shadow(0 0 22px rgba(0,201,200,.3));}
+.lh-h{font-family:'Syne',sans-serif;font-size:17px;font-weight:800;background:linear-gradient(90deg,var(--teal),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:5px;}
+.lh-s{font-size:13px;color:var(--muted);margin-bottom:16px;font-weight:300;}
+.lh-bs{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
+.lcard{background:var(--card);border:1px solid rgba(255,45,155,.18);border-radius:12px;padding:12px;margin-bottom:8px;display:flex;gap:10px;align-items:center;cursor:pointer;}
+.gg{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;}
+.gbox{background:var(--card);border-radius:10px;padding:8px;text-align:center;border:1px solid rgba(255,255,255,.04);}
+.gb-i{font-size:19px;margin-bottom:3px;}
+.gb-n{font-family:'Syne',sans-serif;font-size:9px;font-weight:700;}
+.gb-c{font-size:9px;color:var(--muted);}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;border-radius:8px;padding:9px 18px;transition:transform .15s;}
+.btn:active{transform:scale(.95);}
+.bt-teal{background:linear-gradient(135deg,var(--teal),#007878);color:var(--black);box-shadow:0 3px 14px rgba(0,201,200,.22);}
+.bt-gold{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--black);}
+.bt-pink{background:linear-gradient(135deg,var(--pink),#FF6EC7);color:#fff;}
+.bt-glass{background:var(--glass);color:var(--muted);border:1px solid var(--border);}
+.bt-red{background:rgba(255,59,85,.1);color:var(--red);border:1px solid rgba(255,59,85,.2);}
+.bt-sm{padding:5px 12px;font-size:10px;}
+.bt-full{width:100%;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:13px;}
+.inp{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:13px;outline:none;}
+.inp:focus{border-color:rgba(0,201,200,.45);}
+.lbl{font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:.12em;color:var(--muted);text-transform:uppercase;display:block;margin-bottom:4px;}
+.sct{font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:.16em;color:var(--teal);text-transform:uppercase;}
+.ph{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;margin-bottom:3px;}
+.ps{font-size:13px;color:var(--muted);margin-bottom:13px;font-weight:300;}
+.bbar{display:flex;align-items:center;gap:9px;padding:11px 13px;border-bottom:1px solid var(--border);}
+.bbtn{width:28px;height:28px;border-radius:7px;background:var(--glass);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--muted);}
+.row{display:flex;align-items:center;gap:9px;padding:11px 13px;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer;}
+.row:last-child{border-bottom:none;}
+.tag{display:inline-block;padding:2px 8px;border-radius:20px;font-family:'Syne',sans-serif;font-size:9px;font-weight:700;text-transform:uppercase;}
+.tg-pink{background:rgba(255,45,155,.1);color:var(--pink);border:1px solid rgba(255,45,155,.2);}
+.tg-teal{background:rgba(0,201,200,.1);color:var(--teal);border:1px solid rgba(0,201,200,.2);}
+.modbg{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:500;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(8px);}
+.mod{background:#0A0A0C;border:1px solid rgba(0,201,200,.15);border-radius:16px 16px 0 0;padding:20px;width:100%;max-width:480px;animation:slideUp .25s;}
+.mod-h{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;margin-bottom:3px;}
+.mod-x{width:26px;height:26px;border-radius:50%;background:var(--glass);border:1px solid var(--border);color:var(--muted);font-size:14px;}
+.sview{height:calc(100vh - 48px);position:relative;overflow:hidden;}
+.scont{position:absolute;inset:0;}
+.sx{position:absolute;z-index:100;border-radius:20px;padding:6px 15px;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;}
+.filters{display:flex;gap:6px;padding:0 11px 10px;overflow-x:auto;}
+.filter{flex-shrink:0;padding:5px 12px;border-radius:20px;font-family:'Syne',sans-serif;font-size:10px;font-weight:700;border:1px solid var(--border);background:transparent;color:var(--muted);}
+.filter.on{background:linear-gradient(135deg,var(--teal),var(--gold));color:var(--black);border-color:transparent;}
+.shopg{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px;padding:0 11px 16px;}
+.sitem{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;animation:fadeUp .3s ease both;}
+.si-th{height:104px;background:linear-gradient(135deg,#080E0E,var(--card2));display:flex;align-items:center;justify-content:center;font-size:38px;}
+.si-b{padding:9px;}
+.si-n{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;margin-bottom:2px;line-height:1.3;}
+.si-c{font-size:10px;color:var(--muted);margin-bottom:6px;}
+.si-bot{display:flex;justify-content:space-between;align-items:center;}
+.si-p{font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--gold);}
+.si-add{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--teal),var(--gold));font-size:14px;color:var(--black);display:flex;align-items:center;justify-content:center;}
+.si-sp{font-size:8px;color:var(--dim);text-align:center;margin-top:4px;padding:2px 5px;background:rgba(0,0,0,.3);border-radius:5px;}
+.cg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:14px;}
+.cpkg{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center;}
+.cpkg.on{background:rgba(0,201,200,.07);border-color:var(--teal);}
+.cp-c{font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:var(--gold);}
+.cp-b{font-size:9px;color:var(--green);margin-top:1px;min-height:12px;}
+.cp-p{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;margin-top:4px;}
+.cp-l{font-size:9px;color:var(--muted);}
+</style>
+<script>
+// ═══ FEED ═══
+async function fetchPosts(){
+  ST.postsLoaded=true;
+  try{
+    const{data}=await db.from('videos').select('*,profiles(id,username,display_name,avatar,verified)').eq('status','published').order('created_at',{ascending:false}).limit(30);
+    ST.posts=data||[];
+  }catch{ST.posts=[];}
+  if(ST.user){
+    try{
+      const{data:likes}=await db.from('video_likes').select('video_id').eq('user_id',ST.user.id);
+      if(likes)likes.forEach(l=>ST.liked[l.video_id]=true);
+      const{data:fols}=await db.from('follows').select('following_id').eq('follower_id',ST.user.id);
+      if(fols)fols.forEach(f=>ST.following[f.following_id]=true);
+    }catch(e){}
+  }
+}
+
+// ═══ VIDEO UPLOAD ═══
+function showUpload(){
+  if(!ST.user){toast('Please sign in first');return;}
+  $('upmodal')?.remove();
+  const m=document.createElement('div');m.className='modbg';m.id='upmodal';
+  m.innerHTML='<div class="mod"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div class="mod-h">🎬 Upload Video</div><button class="mod-x" onclick="$(\'upmodal\').remove()">×</button></div>'+
+    '<div id="up-pick"><label style="display:block;border:2px dashed var(--border);border-radius:12px;padding:28px 14px;text-align:center;cursor:pointer;background:rgba(0,201,200,.03)"><div style="font-size:38px;margin-bottom:8px">📹</div><div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;margin-bottom:3px">Tap to choose a video</div><div style="font-size:11px;color:var(--muted)">MP4, MOV · up to ~50MB works best</div><input type="file" accept="video/*" style="display:none" onchange="pickVideo(this)"/></label></div>'+
+    '<div id="up-form" style="display:none"><div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:11px;font-size:12px;color:var(--teal)" id="up-fname">video selected</div>'+
+    '<label class="lbl">Caption</label><input class="inp" id="up-title" placeholder="Say something about your video..." style="margin-bottom:10px"/>'+
+    '<label class="lbl">Category</label><select class="inp" id="up-cat" style="margin-bottom:13px"><option>Faith</option><option>Worship</option><option>WealthShift</option><option>Teaching</option><option>Prophetic</option><option>Youth</option><option>Testimony</option></select>'+
+    '<button class="auth-btn" id="up-btn" onclick="doUpload()">⬆️ Post Video</button>'+
+    '<div id="up-prog" style="display:none;margin-top:11px"><div style="height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden"><div id="up-bar" style="height:100%;width:0;background:linear-gradient(90deg,var(--teal),var(--gold));border-radius:3px;transition:width .3s"></div></div><div id="up-pct" style="text-align:center;font-size:11px;color:var(--muted);margin-top:6px">Uploading...</div></div></div></div>';
+  m.addEventListener('click',e=>{if(e.target===m)m.remove();});
+  document.body.appendChild(m);
+}
+let pickedFile=null;
+function pickVideo(input){
+  const f=input.files&&input.files[0];
+  if(!f)return;
+  if(f.size>80*1024*1024){toast('That video is large — please pick one under ~50MB');return;}
+  pickedFile=f;
+  $('up-pick').style.display='none';
+  $('up-form').style.display='block';
+  $('up-fname').textContent='📹 '+f.name;
+}
+async function doUpload(){
+  if(!pickedFile){toast('Pick a video first');return;}
+  if(!ST.user){toast('Please sign in');return;}
+  const btn=$('up-btn');btn.disabled=true;btn.textContent='Uploading...';
+  $('up-prog').style.display='block';
+  const title=$('up-title')?.value||'New video';
+  const cat=$('up-cat')?.value||'Faith';
+  const ext=(pickedFile.name.split('.').pop()||'mp4').toLowerCase();
+  const path=ST.user.id+'/'+Date.now()+'.'+ext;
+  // fake-smooth progress (storage API doesn't stream progress in browser SDK)
+  let pct=0;const tick=setInterval(()=>{pct=Math.min(pct+Math.random()*12,90);$('up-bar').style.width=pct+'%';$('up-pct').textContent='Uploading... '+Math.round(pct)+'%';},250);
+  try{
+    const{error:upErr}=await db.storage.from('videos').upload(path,pickedFile,{cacheControl:'3600',upsert:false});
+    if(upErr)throw upErr;
+    const{data:pub}=db.storage.from('videos').getPublicUrl(path);
+    const videoUrl=pub.publicUrl;
+    const{error:dbErr}=await db.from('videos').insert({creator_id:ST.user.id,title:title,description:title,video_url:videoUrl,category:cat,status:'published'});
+    if(dbErr)throw dbErr;
+    clearInterval(tick);$('up-bar').style.width='100%';$('up-pct').textContent='Done! 🎉';
+    setTimeout(()=>{$('upmodal')?.remove();pickedFile=null;ST.posts=[];ST.postsLoaded=false;toast('✅ Video posted!');go('feed');},700);
+  }catch(e){
+    clearInterval(tick);console.error('upload',e);
+    $('up-prog').style.display='none';btn.disabled=false;btn.textContent='⬆️ Post Video';
+    toast('Upload failed: '+(e.message||'try a smaller video'));
+  }
+}
+function rFeed(p){
+  if(!ST.postsLoaded){fetchPosts().then(render);}
+  const posts=ST.posts;
+  const showingDemo=false;
+  p.innerHTML='<div class="stories">'+
+    [{u:'You',a:'➕'},{u:'Pastor_Em',a:'👨🏿‍💼'},{u:'Zoe_W',a:'👩🏽‍🎤'},{u:'KingFin',a:'👨🏾‍💻'},{u:'Apostle',a:'👩🏾‍⚖️'},{u:'Youth',a:'👨🏼‍🎓'}].map(s=>'<div class="story" onclick="storyTap(\''+s.u+'\')"><div class="st-ring"><div class="st-in">'+s.a+'</div></div><span class="st-nm">'+s.u+'</span></div>').join('')+
+    '</div>'+
+    (showingDemo?'<div style="padding:9px 12px;background:rgba(201,162,39,.06);border-bottom:1px solid var(--border);font-size:11px;color:var(--gold);text-align:center">✨ Sample posts — upload your video and it appears here</div>':'')+
+    posts.map((o,i)=>{
+      const real=!!o.video_url; // real uploaded post vs demo
+      const creatorId=o.profiles?o.profiles.id:null;
+      const nm=o.profiles?o.profiles.display_name:o.u||'Creator';
+      const hd=o.profiles?'@'+o.profiles.username:o.h||'';
+      const av=o.profiles?o.profiles.avatar:o.av||'👤';
+      const vf=o.verified||(o.profiles&&o.profiles.verified)||o.v;
+      const tx=o.description||o.txt||'';
+      const lk=o.lk||o.likes||0,cm=o.cm||o.comments||0,sh=o.sh||o.shares||0;
+      const ct=o.category||o.cat||'Faith',isL=o.type==='live';
+      const vurl=o.video_url||'';
+      const mine=real&&ST.user&&creatorId===ST.user.id;
+      const media=vurl
+        ? '<div class="po-md" style="padding:0"><video src="'+vurl+'" controls playsinline preload="metadata" style="width:100%;height:100%;object-fit:cover;background:#000"></video><div class="po-ct" style="pointer-events:none">'+ct+'</div></div>'
+        : '<div class="po-md" onclick="toast(\'▶ Demo clip\')"><div class="po-play">▶</div>'+(isL?'<div class="po-lb"><div class="ld"></div>LIVE</div>':'')+'<div class="po-ct">'+ct+'</div>'+(o.dur?'<div class="po-dr">'+o.dur+'</div>':'')+'</div>';
+      const followBtn = mine
+        ? '<button class="po-fol" style="border-color:rgba(255,59,85,.3);color:var(--red)" onclick="deleteVideo(\''+o.id+'\')">Delete</button>'
+        : (real&&creatorId
+            ? '<button class="po-fol '+(ST.following[creatorId]?'on':'')+'" onclick="toggleFollow(\''+creatorId+'\',\''+esc(nm)+'\')">'+(ST.following[creatorId]?'Following':'Follow')+'</button>'
+            : '<button class="po-fol" onclick="toast(\'Demo creator\')">Follow</button>');
+      return '<div class="post" style="animation-delay:'+(i*.05)+'s"><div class="po-h"><div class="po-av">'+av+'</div><div style="flex:1"><div class="po-nm">'+nm+(vf?'<span style="color:var(--teal);font-size:10px">✓</span>':'')+'</div><div class="po-mt">'+hd+' · '+(o.t||'now')+'</div></div>'+followBtn+'</div>'+media+'<div class="po-tx">'+tx+'</div><div class="po-ac"><button class="ac" onclick="toggleLike(\''+o.id+'\','+lk+','+(real?'true':'false')+')"><span class="ac-i">'+(ST.liked[o.id]?'❤️':'🤍')+'</span><span id="lk'+o.id+'">'+(lk+(ST.liked[o.id]?1:0)).toLocaleString()+'</span></button><button class="ac" onclick="'+(real?'openComments(\''+o.id+'\')':'toast(\'Demo post\')')+'"><span class="ac-i">💬</span><span>'+cm.toLocaleString()+'</span></button><button class="ac" onclick="sharePost(\''+o.id+'\')"><span class="ac-i">↗️</span><span>'+sh.toLocaleString()+'</span></button><button class="ac-sv" onclick="toggleSave(\''+o.id+'\')">'+(ST.saved[o.id]?'🔖':'🏷️')+'</button></div></div>';
+    }).join('')+
+    (posts.length?'<div style="padding:30px;text-align:center;font-size:11px;color:var(--dim);font-style:italic">All caught up · "He gives you the ability to produce wealth." — Deut. 8:18</div>'
+      :'<div style="padding:48px 24px;text-align:center"><div style="font-size:46px;margin-bottom:12px">🎬</div><div style="font-family:Syne,sans-serif;font-size:16px;font-weight:800;margin-bottom:6px">No videos yet</div><div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:16px">Be the first to share. Upload a video and start building the Kingdom community.</div><button class="btn bt-teal" onclick="go(\'create\')">➕ Upload First Video</button></div>');
+}
+function storyTap(u){if(u==='You')go('create');else toast(u+' story');}
+async function toggleFollow(creatorId,nm){
+  if(!ST.user){toast('Please sign in first');return;}
+  if(creatorId===ST.user.id){toast("That's you!");return;}
+  ST.following[creatorId]=!ST.following[creatorId];
+  render();
+  try{
+    if(ST.following[creatorId]){
+      await db.from('follows').insert({follower_id:ST.user.id,following_id:creatorId});
+      toast('Following '+nm);
+    }else{
+      await db.from('follows').delete().eq('follower_id',ST.user.id).eq('following_id',creatorId);
+      toast('Unfollowed '+nm);
+    }
+  }catch(e){console.log('follow',e);}
+}
+async function toggleLike(id,base,real){
+  if(!ST.user){toast('Please sign in first');return;}
+  ST.liked[id]=!ST.liked[id];
+  const e=$('lk'+id);if(e)e.textContent=(base+(ST.liked[id]?1:0)).toLocaleString();
+  const b=e?e.previousElementSibling:null;if(b)b.textContent=ST.liked[id]?'❤️':'🤍';
+  if(real){
+    try{
+      if(ST.liked[id]){await db.from('video_likes').insert({video_id:id,user_id:ST.user.id});}
+      else{await db.from('video_likes').delete().eq('video_id',id).eq('user_id',ST.user.id);}
+    }catch(e){}
+  }
+  if(ST.liked[id])toast('❤️ Liked!');
+}
+function toggleSave(id){ST.saved[id]=!ST.saved[id];toast(ST.saved[id]?'🔖 Saved!':'Removed');render();}
+function sharePost(id){
+  const url=location.origin+'/?v='+id;
+  if(navigator.share){navigator.share({title:'KingdomShift.Live',url:url}).catch(()=>{});}
+  else if(navigator.clipboard){navigator.clipboard.writeText(url);toast('↗️ Link copied!');}
+  else toast('↗️ '+url);
+}
+async function deleteVideo(id){
+  if(!confirm('Delete this video? This cannot be undone.'))return;
+  try{
+    await db.from('videos').delete().eq('id',id).eq('creator_id',ST.user.id);
+    ST.posts=[];ST.postsLoaded=false;toast('🗑️ Video deleted');go('feed');
+  }catch(e){toast('Could not delete: '+(e.message||'try again'));}
+}
+
+// ═══ COMMENTS ═══
+async function openComments(videoId){
+  if(!ST.user){toast('Please sign in first');return;}
+  $('cmodal')?.remove();
+  const m=document.createElement('div');m.className='modbg';m.id='cmodal';
+  m.innerHTML='<div class="mod" style="max-height:75vh;display:flex;flex-direction:column"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div class="mod-h">💬 Comments</div><button class="mod-x" onclick="$(\'cmodal\').remove()">×</button></div><div id="clist" style="flex:1;overflow-y:auto;margin-bottom:11px;min-height:120px"><div style="text-align:center;color:var(--muted);font-size:12px;padding:20px">Loading...</div></div><div style="display:flex;gap:7px"><input class="inp" id="ctext" placeholder="Add a comment..." onkeydown="if(event.key===\'Enter\')postComment(\''+videoId+'\')"/><button class="btn bt-teal" onclick="postComment(\''+videoId+'\')">Post</button></div></div>';
+  m.addEventListener('click',e=>{if(e.target===m)m.remove();});
+  document.body.appendChild(m);
+  loadComments(videoId);
+}
+async function loadComments(videoId){
+  try{
+    const{data}=await db.from('comments').select('*,profiles(display_name,username,avatar)').eq('video_id',videoId).order('created_at',{ascending:false});
+    const list=$('clist');if(!list)return;
+    if(!data||!data.length){list.innerHTML='<div style="text-align:center;color:var(--muted);font-size:12px;padding:20px">No comments yet. Be the first! 🙏</div>';return;}
+    list.innerHTML=data.map(c=>'<div style="display:flex;gap:8px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.04)"><div style="font-size:18px">'+(c.profiles?c.profiles.avatar:'👤')+'</div><div style="flex:1"><div style="font-family:Syne,sans-serif;font-size:11px;font-weight:700">'+(c.profiles?c.profiles.display_name:'User')+'</div><div style="font-size:13px;color:var(--text);margin-top:1px">'+c.text.replace(/</g,'&lt;')+'</div></div></div>').join('');
+  }catch(e){const list=$('clist');if(list)list.innerHTML='<div style="text-align:center;color:var(--muted);font-size:12px;padding:20px">Could not load comments</div>';}
+}
+async function postComment(videoId){
+  const t=$('ctext');const text=t?t.value.trim():'';
+  if(!text)return;
+  t.value='';
+  try{await db.from('comments').insert({video_id:videoId,user_id:ST.user.id,text:text});loadComments(videoId);}
+  catch(e){toast('Could not post comment');}
+}
+
+// ═══ LIVE ═══
+function stopGifts(){if(ST.giftTimer){clearTimeout(ST.giftTimer);ST.giftTimer=null;}}
+async function fetchStreams(){try{const{data}=await db.from('live_streams').select('*,profiles(display_name,username,avatar,verified)').eq('status','live').order('viewer_count',{ascending:false});return data||[];}catch{return[];}}
+function rLive(p){
+  fetchStreams().then(streams=>{
+    p.innerHTML='<div class="lhero"><div class="lh-ic">📡</div><div class="lh-h">KingdomShift.Live</div><div class="lh-s">'+(streams.length?streams.length+' streams live now':'Be the first to go live today')+'</div><div class="lh-bs"><button class="btn bt-pink" onclick="showGoLive()">🔴 Go Live</button><button class="btn bt-glass" onclick="go(\'live\',\'live_streaming_guide\')">📡 Setup Guide</button><button class="btn bt-glass" onclick="showCoins()">🪙 '+ST.coins+' Coins</button></div></div>'+
+    (streams.length?'<div style="padding:0 11px;margin-top:11px"><div class="sct" style="padding:4px 0 8px">🔴 Live Right Now</div>'+streams.map(s=>'<div class="lcard" onclick="joinStream(\''+s.id+'\')"><div style="font-size:29px">'+(s.profiles?s.profiles.avatar:'👤')+'</div><div style="flex:1"><div style="font-family:Syne,sans-serif;font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px">'+(s.profiles?s.profiles.display_name:'Creator')+'<span class="tag tg-pink" style="font-size:8px">LIVE</span></div><div style="font-size:12px;color:var(--muted);margin:2px 0 3px">'+(s.title||'Live Stream')+'</div><div style="font-size:11px;color:var(--teal)">👁 '+(s.viewer_count||0).toLocaleString()+' watching</div></div><span style="font-size:21px">▶</span></div>').join('')+'</div>':'')+
+    '<div style="padding:11px"><div class="sct" style="padding:4px 0 8px">🎁 Gift Tiers</div><div class="gg">'+GIFTS.map(g=>'<div class="gbox" style="border-color:'+g.col+'20"><div class="gb-i">'+g.i+'</div><div class="gb-n" style="color:'+g.col+'">'+g.n+'</div><div class="gb-c">🪙'+g.c+'</div></div>').join('')+'</div><div style="margin-top:10px;background:rgba(0,201,200,.04);border:1px solid rgba(0,201,200,.08);border-radius:10px;padding:9px;text-align:center;font-size:10px;color:var(--dim);line-height:1.7">Powered by ZegoCloud · Up to 50,000 viewers<br/>Platform 80% · Creator 20% on gifts</div></div>';
+  });
+}
+function showGoLive(){
+  if(!ST.user){toast('Please sign in first');return;}
+  const m=document.createElement('div');m.className='modbg';m.id='golive';
+  m.innerHTML='<div class="mod"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div class="mod-h">🔴 Go Live</div><button class="mod-x" onclick="$(\'golive\').remove()">×</button></div><label class="lbl">Stream Title</label><input class="inp" id="stt" placeholder="What are you streaming today?" style="margin-bottom:11px"/><div style="font-size:10px;color:var(--dim);line-height:1.8;margin-bottom:13px">✓ Real viewers via ZegoCloud · ✓ Gift animations<br/>✓ Up to 50,000 viewers · ✓ Saved to your profile</div><button class="auth-btn" onclick="launchStream()">🔴 Start Streaming</button></div>';
+  m.addEventListener('click',e=>{if(e.target===m)m.remove();});
+  document.body.appendChild(m);
+}
+async function launchStream(){
+  const title=$('stt')?.value||'Live Stream';
+  $('golive')?.remove();
+  const sid='ks_'+ST.user.id.slice(0,8)+'_'+Date.now();
+  try{await db.from('live_streams').insert({id:sid,creator_id:ST.user.id,title:title,status:'live',viewer_count:0});}catch(e){console.log(e);}
+  openStream(sid,'host');
+}
+async function joinStream(sid){if(!ST.user){toast('Please sign in to watch');return;}openStream(sid,'audience');}
+function ensureZego(cb){
+  if(typeof ZegoUIKitPrebuilt!=='undefined'){cb();return;}
+  toast('Loading live engine...');
+  const s=document.createElement('script');
+  s.src='https://unpkg.com/@zegocloud/zego-uikit-prebuilt/zego-uikit-prebuilt.js';
+  s.onload=()=>{if(typeof ZegoUIKitPrebuilt!=='undefined')cb();else toast('Live engine failed to load — check connection');};
+  s.onerror=()=>toast('Live engine failed to load — check connection');
+  document.head.appendChild(s);
+}
+function openStream(sid,role){
+  ensureZego(()=>doOpenStream(sid,role));
+}
+function doOpenStream(sid,role){
+  const p=$('page'),isHost=role==='host';
+  p.innerHTML='<div class="sview"><div class="scont" id="zego"></div><button class="sx" onclick="'+(isHost?'endStream(\''+sid+'\')':'go(\'live\')')+'" style="'+(isHost?'top:12px;right:12px;background:var(--red);color:#fff':'top:12px;left:12px;background:rgba(0,0,0,.75);color:var(--text);border:1px solid var(--border);backdrop-filter:blur(8px)')+'">'+(isHost?'■ End Stream':'← Leave')+'</button></div>';
+  // wait for the container to actually exist in the page before launching ZegoCloud
+  function launch(tries){
+    const box=$('zego');
+    if(!box){ if(tries>0){setTimeout(()=>launch(tries-1),100);return;} toast('Could not start stream — please retry'); return; }
+    try{
+      const token=ZegoUIKitPrebuilt.generateKitTokenForTest(ZEGO_ID,ZEGO_SIGN,sid,ST.user.id,ST.profile?.display_name||('User'+Math.floor(Math.random()*9999)));
+      const kit=ZegoUIKitPrebuilt.create(token);
+      kit.joinRoom({
+        container:box,
+        sharedLinks:isHost?[{name:'Watch on KingdomShift.Live',url:location.origin+'?s='+sid}]:[],
+        scenario:{mode:ZegoUIKitPrebuilt.LiveStreaming,config:{role:isHost?ZegoUIKitPrebuilt.Host:ZegoUIKitPrebuilt.Audience}},
+        showPreJoinView:false,turnOnCameraWhenJoining:isHost,turnOnMicrophoneWhenJoining:isHost,
+        showTextChat:true,showUserList:isHost,maxUsers:50000,
+        onLeaveRoom:()=>{if(isHost)endStream(sid);else go('live');}
+      });
+      if(isHost)toast('🔴 You are live!');
+    }catch(e){console.error('zego',e);toast('Stream error: '+(e.message||'retry'));}
+  }
+  requestAnimationFrame(()=>requestAnimationFrame(()=>launch(10)));
+}
+async function endStream(sid){try{await db.from('live_streams').update({status:'ended',ended_at:new Date().toISOString()}).eq('id',sid);}catch(e){}go('live');toast('Stream ended 🙏');}
+
+// ═══ SHOP ═══
+async function fetchShop(){try{const{data}=await db.from('shop_items').select('*,profiles(display_name,username)').eq('active',true).order('sales',{ascending:false});ST.shopItems=(data&&data.length)?data:DEMO_SHOP;}catch{ST.shopItems=DEMO_SHOP;}}
+function rShop(p){
+  if(!ST.shopItems.length)fetchShop().then(render);
+  const items=ST.shopItems.length?ST.shopItems:DEMO_SHOP;
+  const fils=['All','eBook','Course','Merch','Event','Coaching','Digital'];
+  const fil=ST.shopFilter==='All'?items:items.filter(i=>(i.tp||i.type)===ST.shopFilter);
+  p.innerHTML='<div style="padding:13px 11px 0;display:flex;justify-content:space-between;margin-bottom:10px"><div><div class="ph"><span style="color:var(--teal)">Authority</span>Shop</div><div class="ps" style="margin-bottom:0">Creator marketplace</div></div><div style="position:relative;cursor:pointer" onclick="toast(\'Cart: '+ST.cart+' items\')"><span style="font-size:24px">🛍️</span>'+(ST.cart>0?'<div style="position:absolute;top:-2px;right:-3px;width:15px;height:15px;border-radius:50%;background:var(--pink);font-size:9px;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid var(--black)">'+ST.cart+'</div>':'')+'</div></div><div class="filters">'+fils.map(f=>'<button class="filter '+(ST.shopFilter===f?'on':'')+'" onclick="ST.shopFilter=\''+f+'\';render()">'+f+'</button>').join('')+'</div><div class="shopg">'+fil.map((it,i)=>'<div class="sitem" style="animation-delay:'+(i*.05)+'s"><div class="si-th">'+(it.ic||it.icon||'📦')+'</div><div class="si-b"><div class="si-n">'+(it.nm||it.name)+'</div><div class="si-c">by '+(it.profiles?it.profiles.display_name:it.cr||'Creator')+'</div><div class="si-bot"><span class="si-p">$'+(it.pr||it.price)+'</span><button class="si-add" onclick="ST.cart++;toast(\'✅ Added\');render()">+</button></div><div class="si-sp">Creator 77% · Platform 20% · Stripe 3%</div></div></div>').join('')+'</div>';
+}
+
+// ═══ COINS ═══
+let selPkg=null;
+function showCoins(){
+  $('coins')?.remove();
+  const m=document.createElement('div');m.className='modbg';m.id='coins';
+  m.innerHTML='<div class="mod"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px"><div class="mod-h">🪙 Buy Coins</div><button class="mod-x" onclick="$(\'coins\').remove()">×</button></div><div style="font-size:12px;color:var(--muted);margin-bottom:14px">Send gifts during live streams</div><div class="cg">'+COIN_PKGS.map(c=>'<div class="cpkg" id="cp-'+c.id+'" onclick="pickPkg(\''+c.id+'\')"><div class="cp-c">'+c.coins.toLocaleString()+'</div><div class="cp-b">'+(c.bonus>0?'+'+c.bonus+' bonus':' ')+'</div><div class="cp-p">$'+c.pr+'</div><div class="cp-l">'+c.lbl+'</div></div>').join('')+'</div><button class="btn bt-teal bt-full" id="cbuy" onclick="buyCoins()">Select a package</button><div style="text-align:center;margin-top:8px;font-size:9px;color:var(--dim)">Secure via Stripe · Platform keeps 80%</div></div>';
+  m.addEventListener('click',e=>{if(e.target===m)m.remove();});
+  document.body.appendChild(m);
+}
+function pickPkg(id){selPkg=COIN_PKGS.find(c=>c.id===id);document.querySelectorAll('.cpkg').forEach(e=>e.classList.remove('on'));$('cp-'+id)?.classList.add('on');const b=$('cbuy');if(b&&selPkg)b.textContent='Buy '+selPkg.coins.toLocaleString()+' coins — $'+selPkg.pr;}
+async function buyCoins(){
+  if(!selPkg){toast('Pick a package first');return;}
+  if(!ST.user){toast('Please sign in first');return;}
+  ST.coins+=selPkg.coins;
+  try{await db.from('profiles').update({coins:ST.coins}).eq('id',ST.user.id);}catch(e){}
+  $('coins')?.remove();toast('✅ '+selPkg.coins.toLocaleString()+' coins added!');
+}
+</script>
+<style>
+.whero{margin:11px;background:linear-gradient(135deg,#070D0D,#07070A);border:1px solid rgba(0,201,200,.14);border-radius:14px;padding:16px;position:relative;overflow:hidden;}
+.whero::before{content:'$';position:absolute;font-family:'Syne',sans-serif;font-size:180px;font-weight:800;color:rgba(0,201,200,.04);right:-10px;top:-20px;line-height:1;}
+.wh-l{font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:.13em;color:var(--teal);margin-bottom:5px;text-transform:uppercase;}
+.wh-a{font-family:'Syne',sans-serif;font-size:36px;font-weight:800;line-height:1;margin-bottom:4px;}
+.wh-s{font-size:11px;color:var(--muted);}
+.gate{margin:0 11px 10px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;}
+.gt-t{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;}
+.gt-l{font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:.09em;color:var(--gold);text-transform:uppercase;}
+.gt-p{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;}
+.gt-bar{height:5px;background:rgba(255,255,255,.05);border-radius:3px;overflow:hidden;margin-bottom:6px;}
+.gt-f{height:100%;background:linear-gradient(90deg,var(--teal),var(--gold));border-radius:3px;}
+.gt-i{display:flex;justify-content:space-between;font-size:10px;}
+.eitem{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:11px;display:flex;align-items:center;gap:9px;margin-bottom:6px;}
+.ei-ic{font-size:17px;width:36px;height:36px;background:var(--card2);border-radius:8px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);}
+.ei-n{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;}
+.ei-no{font-size:10px;color:var(--muted);}
+.ei-a{font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--green);margin-left:auto;}
+.shero{margin:11px;background:linear-gradient(135deg,#06090E,#060C06);border:1px solid rgba(0,201,200,.14);border-radius:14px;padding:16px;text-align:center;}
+.sh-ic{font-size:44px;display:block;margin-bottom:8px;animation:float 3s ease infinite;}
+.sh-h{font-family:'Syne',sans-serif;font-size:17px;font-weight:800;color:var(--teal);margin-bottom:5px;}
+.bhero{margin:11px;background:linear-gradient(135deg,#090416,#04070D);border:1px solid rgba(155,93,229,.18);border-radius:14px;padding:16px;text-align:center;}
+.bh-ic{font-size:44px;display:block;margin-bottom:8px;animation:float 3s ease infinite;}
+.bh-h{font-family:'Syne',sans-serif;font-size:19px;font-weight:800;background:linear-gradient(135deg,var(--purple),var(--gold2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:5px;}
+.modeg{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 11px 10px;}
+.mtile{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center;}
+.mtile:active{transform:scale(.95);}
+.mt-i{font-size:26px;margin-bottom:7px;}
+.mt-n{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;margin-bottom:2px;}
+.mt-d{font-size:10px;color:var(--muted);}
+.qwrap{padding:11px;}
+.q-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;}
+.q-mode{font-family:'Syne',sans-serif;font-size:9px;color:var(--muted);letter-spacing:.09em;text-transform:uppercase;}
+.q-score{font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:var(--gold);}
+.q-prog{height:4px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden;margin-bottom:10px;}
+.q-pf{height:100%;background:linear-gradient(90deg,var(--teal),var(--gold));border-radius:2px;transition:width .4s;}
+.qcard{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:15px;margin-bottom:9px;}
+.qc-t{display:flex;gap:10px;justify-content:space-between;margin-bottom:12px;}
+.q-qn{font-family:'Syne',sans-serif;font-size:9px;letter-spacing:.11em;color:var(--gold);margin-bottom:6px;text-transform:uppercase;font-weight:700;}
+.q-qt{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;line-height:1.4;}
+.q-v{font-size:11px;color:var(--dim);margin-top:5px;font-style:italic;}
+.tmr{position:relative;width:56px;height:56px;flex-shrink:0;}
+.tmr svg{width:56px;height:56px;transform:rotate(-90deg);}
+.tmr-bg{fill:none;stroke:rgba(255,255,255,.05);stroke-width:5;}
+.tmr-f{fill:none;stroke-width:5;stroke-linecap:round;transition:stroke-dashoffset 1s linear,stroke .3s;}
+.tmr-c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.tmr-n{font-family:'Syne',sans-serif;font-size:17px;font-weight:800;line-height:1;}
+.tmr-l{font-size:8px;color:var(--muted);}
+.qopts{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.qopt{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:10px 8px;font-family:'Syne',sans-serif;font-size:11px;font-weight:600;color:var(--text);text-align:left;display:flex;align-items:center;gap:5px;}
+.qopt:active{transform:scale(.95);}
+.qopt.correct{background:rgba(0,212,106,.12);border-color:var(--green);color:var(--green);}
+.qopt.wrong{background:rgba(255,59,85,.12);border-color:var(--red);color:var(--red);}
+.qo-l{font-size:9px;color:var(--teal);font-weight:800;}
+.qres{background:var(--card);border:1px solid rgba(0,212,106,.14);border-radius:14px;padding:22px;text-align:center;}
+.qr-ic{font-size:52px;display:block;margin-bottom:9px;animation:float 2s ease infinite;}
+.qr-t{font-family:'Syne',sans-serif;font-size:19px;font-weight:800;margin-bottom:4px;}
+.qr-sc{font-family:'Syne',sans-serif;font-size:42px;font-weight:800;background:linear-gradient(135deg,var(--teal),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:13px;}
+.pcov{height:120px;background:linear-gradient(135deg,#070D0D,#07070A);position:relative;}
+.pav{position:absolute;bottom:-34px;left:14px;width:70px;height:70px;border-radius:50%;background:linear-gradient(135deg,var(--teal),var(--gold));border:3px solid var(--black);display:flex;align-items:center;justify-content:center;font-size:29px;}
+.ped{position:absolute;bottom:9px;right:11px;background:rgba(0,0,0,.7);border:1px solid var(--border);border-radius:20px;padding:4px 11px;font-family:'Syne',sans-serif;font-size:10px;color:var(--text);}
+.pinfo{padding:42px 14px 12px;}
+.pnm{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;display:flex;align-items:center;gap:5px;}
+.ph2{font-size:11px;color:var(--muted);margin-bottom:7px;}
+.pbio{font-size:14px;font-style:italic;line-height:1.6;margin-bottom:12px;color:var(--muted);}
+.statg{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:12px;}
+.stc{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:9px;text-align:center;}
+.stn{font-family:'Syne',sans-serif;font-size:17px;font-weight:800;background:linear-gradient(135deg,var(--teal),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.stl{font-family:'Syne',sans-serif;font-size:9px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;margin-top:1px;}
+.procard{margin:0 11px 12px;background:linear-gradient(135deg,#070C07,#07080D);border:1px solid rgba(0,201,200,.14);border-radius:12px;padding:13px;}
+.sg{padding:0 11px;margin-bottom:13px;}
+.sgt{font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:.16em;color:var(--teal);text-transform:uppercase;padding:9px 0 6px;}
+.sgb{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.sr{display:flex;align-items:center;gap:9px;padding:11px 12px;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer;}
+.sr:last-child{border-bottom:none;}
+.sr-i{font-size:16px;width:24px;text-align:center;}
+.sr-l{font-size:12px;font-weight:500;}
+.sr-d{font-size:10px;color:var(--muted);margin-top:1px;}
+.sr-a{color:var(--dim);font-size:14px;margin-left:auto;}
+.tgl{width:40px;height:22px;border-radius:11px;position:relative;transition:background .2s;flex-shrink:0;margin-left:auto;}
+.tgl.on{background:linear-gradient(135deg,var(--teal),var(--gold));}
+.tgl.off{background:rgba(255,255,255,.1);}
+.tgl-k{width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:3px;transition:left .2s;}
+.tgl.on .tgl-k{left:21px;}
+.tgl.off .tgl-k{left:3px;}
+.astat{display:grid;grid-template-columns:repeat(auto-fill,minmax(125px,1fr));gap:7px;padding:0 11px;margin-bottom:12px;}
+.asc{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:11px;}
+.asc-i{font-size:18px;margin-bottom:5px;}
+.asc-n{font-family:'Syne',sans-serif;font-size:19px;font-weight:800;background:linear-gradient(135deg,var(--teal),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.asc-l{font-family:'Syne',sans-serif;font-size:9px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;margin-top:1px;}
+.asec{background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:7px;overflow:hidden;}
+.as-h{padding:11px 12px;display:flex;align-items:center;gap:9px;border-bottom:1px solid rgba(255,255,255,.04);}
+.as-hl{flex:1;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;}
+.as-bd{padding:7px 12px;}
+.as-r{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px;}
+.as-r:last-child{border-bottom:none;}
+.as-rl{color:var(--muted);}
+.lwrap{padding:14px;max-width:760px;}
+.lt{font-family:'Syne',sans-serif;font-size:21px;font-weight:800;margin-bottom:3px;}
+.ld8{font-size:11px;color:var(--muted);margin-bottom:18px;}
+.lh2{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--teal);margin:16px 0 6px;}
+.lp{font-size:13px;color:var(--muted);line-height:1.8;margin-bottom:9px;font-weight:300;}
+.lp strong{color:var(--text);font-weight:600;}
+.gstep{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px;margin-bottom:8px;display:flex;gap:10px;}
+.gs-n{width:28px;height:28px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,var(--teal),var(--gold));display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:11px;font-weight:800;color:var(--black);}
+.gs-t{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;margin-bottom:3px;}
+.gs-d{font-size:12px;color:var(--muted);line-height:1.65;font-weight:300;}
+.gs-c{background:rgba(0,0,0,.4);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:11px;color:var(--teal);margin-top:6px;font-family:monospace;word-break:break-all;}
+</style>
+<script>
+// ═══ WEALTH ═══
+async function fetchWallet(){if(!ST.user)return null;try{const{data}=await db.from('creator_wallets').select('*').eq('creator_id',ST.user.id).maybeSingle();return data;}catch{return null;}}
+function rWealth(p){
+  fetchWallet().then(w=>{
+    const bal=w?w.balance:0,earned=w?w.total_earned:0,locked=w?w.locked!==false:true;
+    const fol=ST.profile?ST.profile.followers:0,gate=5000,pct=Math.min(Math.round(fol/gate*100),100);
+    p.innerHTML='<div style="padding:13px 11px 0"><div class="ph" style="background:linear-gradient(90deg,var(--gold),#FFF0A0,var(--teal),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent">WealthShift</div><div class="ps">"He gives you the ability to produce wealth." — Deut. 8:18</div></div><div class="whero"><div class="wh-l">Total Earned</div><div class="wh-a">$'+Number(earned).toFixed(2)+'</div><div class="wh-s">Balance: <strong style="color:var(--green)">$'+Number(bal).toFixed(2)+'</strong></div></div><div class="gate"><div class="gt-t"><span class="gt-l">🔒 Withdrawal Gate</span><span class="gt-p">'+pct+'%</span></div><div class="gt-bar"><div class="gt-f" style="width:'+pct+'%"></div></div><div class="gt-i"><span style="color:var(--text)">'+fol.toLocaleString()+' followers</span><span style="color:var(--gold)">'+Math.max(0,gate-fol).toLocaleString()+' more needed</span></div></div><div style="padding:0 11px;margin-bottom:10px"><div class="sct" style="padding:4px 0 8px">Earnings Breakdown</div>'+
+    [['🎁','Live Gifts','Platform 80% · You 20%'],['🛍️','AuthorityShop','Platform 20% · You 77%'],['💎','Subscriptions','Platform 30% · You 62%'],['🙏','Tithes','Platform 5% · You 95%']].map(e=>'<div class="eitem"><div class="ei-ic">'+e[0]+'</div><div style="flex:1"><div class="ei-n">'+e[1]+'</div><div class="ei-no">'+e[2]+'</div></div><div class="ei-a">$0.00</div></div>').join('')+
+    '</div><div style="padding:0 11px 16px">'+(!locked&&bal>=50?'<button class="btn bt-teal bt-full" onclick="reqWithdraw()" style="margin-bottom:7px">💸 Request Withdrawal</button>':'')+'<div style="font-size:10px;color:var(--dim);text-align:center;line-height:1.7">Paid on the 15th · $50 minimum · 5,000 followers required<br/><span style="color:var(--teal)">Powered by Stripe Connect</span></div></div>';
+  });
+}
+async function reqWithdraw(){if(!ST.user){toast('Please sign in first');return;}try{await db.from('withdrawal_requests').insert({creator_id:ST.user.id,amount:50,method:'stripe',status:'pending'});}catch(e){}toast('💸 Withdrawal requested! Paid on the 15th.');}
+
+// ═══ SAFE ═══
+function rSafe(p){
+  p.innerHTML='<div class="shero"><span class="sh-ic">🛡️</span><div class="sh-h">Safe Stream</div><div style="font-size:13px;color:var(--muted);line-height:1.65;font-weight:300">Our community. Our standards. Every voice matters and deserves protection.</div></div><div style="padding:0 11px"><div class="sct" style="padding:4px 0 8px">Community Standards</div><div class="card" style="overflow:hidden;margin-bottom:10px">'+
+  [['🚫','No Bullying or Harassment','Zero tolerance. Actioned within 24 hours.'],['🤝','No Hate Speech','All people are created in God\'s image.'],['🔒','No Doxxing — Ever','Personal information stays private.'],['🌱','Elevate — Never Diminish','Build up. Never tear down.'],['⚖️','3-Strike System','Strike 3 = permanent removal.']].map(r=>'<div class="row" style="cursor:default"><div style="font-size:16px;width:26px;text-align:center">'+r[0]+'</div><div><div style="font-size:12px;font-weight:600">'+r[1]+'</div><div style="font-size:10px;color:var(--muted)">'+r[2]+'</div></div></div>').join('')+
+  '</div><div style="background:rgba(255,45,155,.05);border:1px solid rgba(255,45,155,.12);border-radius:12px;padding:13px;margin-bottom:10px"><div class="sct" style="color:var(--pink);padding:0 0 7px">🚨 Anonymous Report</div><div style="font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:10px">See a violation? Report anonymously. The person will never know it was you.</div><button class="btn bt-pink bt-full" onclick="submitReport()">Submit Anonymous Report</button></div><div class="card" style="padding:13px"><div class="sct" style="margin-bottom:8px">📞 Crisis Lines</div>'+
+  [['🇺🇸','988 Lifeline (USA)','988'],['🇬🇧','Samaritans (UK)','116 123'],['🇨🇦','Crisis Services (CA)','1-833-456-4566'],['🇦🇺','Lifeline (AU)','13 11 14'],['🌍','Befrienders Worldwide','befrienders.org']].map(l=>'<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)"><div><div style="font-size:12px;font-weight:600">'+l[0]+' '+l[1]+'</div><div style="font-size:11px;color:var(--gold)">'+l[2]+'</div></div><a href="tel:'+l[2]+'" class="btn bt-glass bt-sm">Call</a></div>').join('')+
+  '</div></div>';
+}
+async function submitReport(){if(!ST.user){toast('Please sign in first');return;}try{await db.from('reports').insert({reporter_id:ST.user.id,type:'other',status:'pending',priority:'normal'});}catch(e){}toast('🚨 Report submitted anonymously. Thank you.');}
+
+// ═══ BATTLES ═══
+function rBattles(p){
+  if(ST.battleView==='game'&&ST.battleMode){rQuiz(p);return;}
+  if(ST.battleView==='result'){rResult(p);return;}
+  p.innerHTML='<div class="bhero"><span class="bh-ic">⚡</span><div class="bh-h">Brain Battles</div><div style="font-size:12px;color:var(--muted)">Test your Kingdom knowledge. Compete worldwide.</div></div><div style="padding:0 11px 7px"><div class="sct" style="padding:4px 0">Choose Your Battle</div></div><div class="modeg">'+
+  [['bible','📖','Bible Quiz','30 sec per question'],['wisdom','👑','Wisdom Duel','Proverbs & wisdom'],['faith','🔥','Faith Challenge','Kingdom principles'],['slam','⚡','Sermon Slam','10 sec lightning']].map(m=>'<div class="mtile" onclick="startBattle(\''+m[0]+'\',\''+m[2]+'\')"><div class="mt-i">'+m[1]+'</div><div class="mt-n">'+m[2]+'</div><div class="mt-d">'+m[3]+'</div></div>').join('')+
+  '</div><div style="padding:0 11px 16px"><div class="sct" style="padding:4px 0 8px">Global Leaderboard</div><div class="card" style="overflow:hidden">'+
+  [['🥇','Pastor_Emmanuel','👨🏿‍💼',4850],['🥈','KingdomFinance','👨🏾‍💻',4210],['🥉','Apostle_Grace','👩🏾‍⚖️',3980],['4',(ST.profile?ST.profile.display_name:'You'),'😊',(ST.profile?ST.profile.battle_score:0)||0]].map(e=>'<div class="row"><div style="font-size:15px;width:22px;text-align:center">'+e[0]+'</div><div style="font-size:16px">'+e[2]+'</div><div style="flex:1;font-family:Syne,sans-serif;font-size:11px;font-weight:600">'+e[1]+'</div><div style="font-family:Syne,sans-serif;font-size:12px;font-weight:800;color:var(--gold)">'+e[3].toLocaleString()+'</div></div>').join('')+
+  '</div></div>';
+}
+function startBattle(id,name){ST.battleMode={id:id,name:name};ST.quiz={idx:0,score:0,streak:0,answered:false,selected:null,secs:id==='slam'?10:30,qs:[...QUIZ_QS].sort(()=>Math.random()-.5).slice(0,5)};ST.battleView='game';render();startQTimer();}
+function rQuiz(p){
+  const s=ST.quiz,q=s.qs[s.idx],circ=2*Math.PI*26,total=ST.battleMode.id==='slam'?10:30,off=circ*(s.secs/total);
+  const tc=s.secs<=5?'#FF3B55':s.secs<=10?'#FF8C00':'#00C9C8';
+  p.innerHTML='<div class="qwrap">'+(s.streak>=3?'<div style="text-align:center;margin-bottom:7px"><span style="display:inline-block;background:rgba(201,162,39,.1);border:1px solid rgba(201,162,39,.2);border-radius:20px;padding:3px 13px;font-family:Syne,sans-serif;font-size:11px;font-weight:700;color:var(--gold2)">🔥 COMBO ×'+s.streak+'!</span></div>':'')+'<div class="q-top"><span class="q-mode">'+ST.battleMode.name+' · Q'+(s.idx+1)+'/'+s.qs.length+'</span><span class="q-score">🏆 '+s.score.toLocaleString()+' pts</span></div><div class="q-prog"><div class="q-pf" style="width:'+(s.idx/s.qs.length*100)+'%"></div></div><div class="qcard"><div class="qc-t"><div style="flex:1"><div class="q-qn">Question '+(s.idx+1)+' · '+q.pts+' pts</div><div class="q-qt">'+q.q+'</div>'+(ST.battleMode.id!=='slam'?'<div class="q-v">📖 '+q.v+'</div>':'')+'</div><div class="tmr"><svg viewBox="0 0 56 56"><circle class="tmr-bg" cx="28" cy="28" r="26"/><circle class="tmr-f" cx="28" cy="28" r="26" stroke="'+tc+'" stroke-dasharray="'+circ+'" stroke-dashoffset="'+(circ-off)+'" id="tcirc"/></svg><div class="tmr-c"><span class="tmr-n" id="tnum" style="color:'+tc+'">'+s.secs+'</span><span class="tmr-l">SEC</span></div></div></div><div class="qopts">'+
+  q.opts.map((o,i)=>{let c='';if(s.answered){if(i===q.a)c='correct';else if(i===s.selected)c='wrong';}return '<button class="qopt '+c+'" onclick="'+(s.answered?'':'answerQ('+i+')')+'"><span class="qo-l">'+String.fromCharCode(65+i)+'.</span>'+o+(s.answered&&i===q.a?' ✓':'')+(s.answered&&i===s.selected&&i!==q.a?' ✗':'')+'</button>';}).join('')+
+  '</div></div><button class="btn bt-glass bt-full" onclick="exitBattle()">← Exit Battle</button></div>';
+}
+function answerQ(idx){
+  clearQTimer();const s=ST.quiz,q=s.qs[s.idx];s.answered=true;s.selected=idx;
+  const ok=idx===q.a;
+  if(ok){const b=s.secs>20?50:s.secs>10?25:0;s.score+=q.pts+b;s.streak++;toast('✓ Correct! +'+(q.pts+b)+' pts');}
+  else{s.streak=0;toast('✗ Wrong answer');}
+  render();
+  setTimeout(()=>{s.idx++;if(s.idx>=s.qs.length){ST.battleView='result';saveScore();}else{s.answered=false;s.selected=null;s.secs=ST.battleMode.id==='slam'?10:30;}render();if(ST.battleView==='game')startQTimer();},ok?1100:1500);
+}
+async function saveScore(){if(!ST.user||!ST.quiz)return;try{await db.from('battle_scores').insert({user_id:ST.user.id,mode:ST.battleMode.id,score:ST.quiz.score,questions:ST.quiz.qs.length,streak:ST.quiz.streak});}catch(e){}}
+function startQTimer(){
+  clearQTimer();
+  ST.qTimer=setInterval(()=>{
+    if(!ST.quiz||ST.quiz.answered)return;
+    ST.quiz.secs--;const tn=$('tnum');if(tn)tn.textContent=ST.quiz.secs;
+    const total=ST.battleMode.id==='slam'?10:30,circ=2*Math.PI*26,tc=$('tcirc');
+    if(tc){tc.setAttribute('stroke-dashoffset',circ-circ*(ST.quiz.secs/total));const c=ST.quiz.secs<=5?'#FF3B55':ST.quiz.secs<=10?'#FF8C00':'#00C9C8';tc.setAttribute('stroke',c);if(tn)tn.style.color=c;}
+    if(ST.quiz.secs<=0){clearQTimer();toast("⏱️ Time's up!");ST.quiz.streak=0;ST.quiz.idx++;if(ST.quiz.idx>=ST.quiz.qs.length){ST.battleView='result';saveScore();render();}else{ST.quiz.answered=false;ST.quiz.selected=null;ST.quiz.secs=ST.battleMode.id==='slam'?10:30;render();startQTimer();}}
+  },1000);
+}
+function clearQTimer(){if(ST.qTimer){clearInterval(ST.qTimer);ST.qTimer=null;}}
+function rResult(p){
+  const s=ST.quiz;
+  p.innerHTML='<div class="qwrap"><div class="qres"><span class="qr-ic">'+(s.score>=400?'🏆':s.score>=200?'🥈':'🥉')+'</span><div class="qr-t">Battle Complete!</div><div class="qr-sc">'+s.score.toLocaleString()+'</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px">Score saved · Keep growing 🙏</div><div style="display:flex;gap:7px"><button class="btn bt-teal" style="flex:1" onclick="exitBattle()">Done ✓</button><button class="btn bt-glass" style="flex:1" onclick="startBattle(\''+ST.battleMode.id+'\',\''+ST.battleMode.name+'\')">Play Again</button></div></div></div>';
+}
+function exitBattle(){ST.battleView='home';ST.battleMode=null;ST.quiz=null;clearQTimer();render();}
+
+// ═══ PROFILE ═══
+function rProfile(p){
+  const u=ST.profile;
+  p.innerHTML='<div class="pcov"><div class="pav">'+(u?u.avatar||'👤':'👤')+'</div><button class="ped" onclick="toast(\'Edit profile coming soon\')">Edit Profile</button></div><div class="pinfo"><div class="pnm">'+(u?u.display_name||'Your Name':'Your Name')+'<span style="color:var(--teal);font-size:11px">'+(u&&u.verified?'✓':'')+'</span></div><div class="ph2">@'+(u?u.username||'handle':'handle')+' · '+(ST.user?ST.user.email:'')+'</div><div class="pbio">'+(u&&u.bio?u.bio:'"Equipping believers to walk in Kingdom authority 👑"')+'</div><div class="statg">'+
+  [[(u?u.followers:0)||0,'Followers'],[(u?u.following:0)||0,'Following'],[(u?u.videos:0)||0,'Videos']].map(s=>'<div class="stc"><div class="stn">'+s[0].toLocaleString()+'</div><div class="stl">'+s[1]+'</div></div>').join('')+
+  '</div></div><div class="procard"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px"><span style="font-family:Syne,sans-serif;font-size:12px;font-weight:800;color:var(--teal)">'+(ST.isPro?'👑 Creator Pro Active':'⚙️ Creator Pro')+'</span>'+(!ST.isPro?'<span style="font-size:11px;color:var(--muted)">$19/month</span>':'')+'</div>'+(!ST.isPro?'<div style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:10px">Simulcast, analytics, unlimited shop, priority CDN.</div><button class="btn bt-gold bt-full" onclick="ST.isPro=true;toast(\'👑 Creator Pro activated!\');render()">Upgrade to Creator Pro</button>':'<div style="font-size:11px;color:var(--muted)">✓ Simulcast · ✓ Analytics · ✓ Unlimited Shop</div>')+'<div style="font-size:9px;color:var(--dim);margin-top:6px">Platform keeps 100% · Stripe powered</div></div>'+
+  '<div style="padding:0 11px"><div class="sct" style="padding:4px 0 8px">🎬 My Videos</div><div id="myvids" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:12px"><div style="grid-column:1/4;text-align:center;color:var(--muted);font-size:12px;padding:14px">Loading...</div></div>'+
+  '<div class="card" style="overflow:hidden;margin-bottom:10px"><div class="row" onclick="go(\'create\')"><div style="font-size:16px;width:22px;text-align:center">➕</div><div style="flex:1;font-size:12px;font-weight:600">Upload a Video</div><div style="color:var(--dim)">›</div></div><div class="row" onclick="go(\'settings\',\'notification_settings\')"><div style="font-size:16px;width:22px;text-align:center">🔔</div><div style="flex:1;font-size:12px;font-weight:600">Notifications</div><div style="color:var(--dim)">›</div></div><div class="row" onclick="go(\'settings\')"><div style="font-size:16px;width:22px;text-align:center">⚙️</div><div style="flex:1;font-size:12px;font-weight:600">Settings</div><div style="color:var(--dim)">›</div></div></div><button class="btn bt-red bt-full" style="margin-bottom:14px" onclick="doSignOut()">🚪 Sign Out</button></div>';
+  loadMyVideos();
+}
+async function loadMyVideos(){
+  if(!ST.user)return;
+  try{
+    const{data}=await db.from('videos').select('id,video_url,category,title').eq('creator_id',ST.user.id).order('created_at',{ascending:false});
+    const box=$('myvids');if(!box)return;
+    if(!data||!data.length){box.innerHTML='<div style="grid-column:1/4;text-align:center;color:var(--muted);font-size:12px;padding:18px;border:1px dashed var(--border);border-radius:10px">No videos yet.<br/><span style="color:var(--teal);cursor:pointer" onclick="go(\'create\')">Upload your first one →</span></div>';return;}
+    box.innerHTML=data.map(v=>'<div style="position:relative;aspect-ratio:9/16;background:#000;border-radius:8px;overflow:hidden;cursor:pointer" onclick="go(\'feed\')"><video src="'+v.video_url+'" preload="metadata" style="width:100%;height:100%;object-fit:cover"></video><div style="position:absolute;bottom:0;left:0;right:0;padding:4px 6px;background:linear-gradient(transparent,rgba(0,0,0,.8));font-size:9px;color:#fff">'+(v.category||'')+'</div></div>').join('');
+  }catch(e){const box=$('myvids');if(box)box.innerHTML='<div style="grid-column:1/4;text-align:center;color:var(--muted);font-size:12px;padding:14px">Could not load videos</div>';}
+}
+
+// ═══ SETTINGS ═══
+function rSettings(p){
+  p.innerHTML='<div style="padding:13px 11px 0"><div class="ph">Settings</div><div class="ps">Manage your KingdomShift.Live account</div></div>'+
+  [['ACCOUNT',[['👤','Edit Profile','Name, bio, avatar'],['🔐','Change Password','Update password'],['📧','Email',ST.user?ST.user.email:'—']]],
+   ['NOTIFICATIONS',[['🔔','Notification Settings','Control alerts','notification_settings']]],
+   ['PRIVACY',[['🔒','Privacy Settings','Control visibility','privacy_settings']]],
+   ['LEGAL',[['📜','Privacy Policy','','privacy_policy'],['📋','Terms of Service','','terms_of_service'],['✍️','Creator Agreement','','creator_agreement'],['📡','Live Streaming Guide','','live_streaming_guide'],['🗑️','Delete Account','','delete_account'],['🛡️','Child Safety','','child_safety']]],
+   ['SUPPORT',[['💬','Contact Support','support@kingdomshift.live'],['ℹ️','About','KingdomShift.Live v1.0']]]
+  ].map(g=>'<div class="sg"><div class="sgt">'+g[0]+'</div><div class="sgb">'+g[1].map(it=>'<div class="sr" onclick="'+(it[3]?'go(\'settings\',\''+it[3]+'\')':'toast(\'Opening '+it[1]+'\')')+'"><div class="sr-i">'+it[0]+'</div><div style="flex:1"><div class="sr-l">'+it[1]+'</div>'+(it[2]?'<div class="sr-d">'+it[2]+'</div>':'')+'</div><span class="sr-a">›</span></div>').join('')+'</div></div>').join('')+
+  '<div style="padding:0 11px 70px"><button class="btn bt-red bt-full" onclick="doSignOut()">🚪 Sign Out</button></div>';
+}
+function rNotifSet(p){
+  p.innerHTML='<div class="bbar"><button class="bbtn" onclick="go(\'profile\')">‹</button><div style="font-family:Syne,sans-serif;font-size:14px;font-weight:800">Notifications</div></div><div class="sg" style="margin-top:5px"><div class="sgt">ACTIVITY</div><div class="sgb">'+
+  [['follower','👤','New Followers','When someone follows you'],['gifts','🎁','Gifts Received','When viewers send gifts'],['comments','💬','Comments','Comments on your content'],['messages','✉️','Messages','New direct messages']].map(it=>'<div class="sr" style="cursor:default"><div class="sr-i">'+it[1]+'</div><div style="flex:1"><div class="sr-l">'+it[2]+'</div><div class="sr-d">'+it[3]+'</div></div><button class="tgl '+(ST.notifs[it[0]]?'on':'off')+'" onclick="toggleNotif(\''+it[0]+'\')"><div class="tgl-k"></div></button></div>').join('')+'</div></div>';
+}
+function toggleNotif(k){ST.notifs[k]=!ST.notifs[k];if(ST.user)db.from('profiles').update({notif_settings:ST.notifs}).eq('id',ST.user.id);toast(ST.notifs[k]?'✅ Enabled':'🔕 Disabled');render();}
+function rPrivSet(p){
+  p.innerHTML='<div class="bbar"><button class="bbtn" onclick="go(\'settings\')">‹</button><div style="font-family:Syne,sans-serif;font-size:14px;font-weight:800">Privacy</div></div><div class="sg" style="margin-top:5px"><div class="sgt">ACCOUNT PRIVACY</div><div class="sgb">'+
+  [['priv','🔒','Private Account','Only approved followers'],['online','🟢','Show Online Status','Let others see activity'],['msgs','💬','Allow Messages','Receive direct messages'],['comments','📝','Allow Comments','Let viewers comment']].map(it=>'<div class="sr" style="cursor:default"><div class="sr-i">'+it[1]+'</div><div style="flex:1"><div class="sr-l">'+it[2]+'</div><div class="sr-d">'+it[3]+'</div></div><button class="tgl '+(ST.privacy[it[0]]?'on':'off')+'" onclick="togglePriv(\''+it[0]+'\')"><div class="tgl-k"></div></button></div>').join('')+'</div></div>';
+}
+function togglePriv(k){ST.privacy[k]=!ST.privacy[k];if(ST.user)db.from('profiles').update({privacy_settings:ST.privacy}).eq('id',ST.user.id);toast(ST.privacy[k]?'✅ Enabled':'Disabled');render();}
+
+// ═══ SEARCH ═══
+function rSearch(p){
+  p.innerHTML='<div style="padding:13px 11px 0"><div class="ph">Discover</div><div class="ps">Find creators, content, community</div><input class="inp" placeholder="Search creators, topics..." oninput="doSearch(this.value)" style="margin-bottom:12px"/><div class="sct" style="padding:4px 0 7px">Trending</div><div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:14px">'+
+  ['#Faith','#WealthShift','#Kingdom','#Worship','#Prayer','#Bible','#Ministry','#Purpose'].map(t=>'<span class="tag tg-teal" style="cursor:pointer;padding:4px 10px;font-size:10px" onclick="toast(\'Browsing '+t+'\')">'+t+'</span>').join('')+
+  '</div><div class="sct" style="padding:4px 0 7px">Suggested Creators</div><div class="card" style="overflow:hidden" id="sres"><div style="text-align:center;color:var(--muted);font-size:12px;padding:16px">Loading creators...</div></div></div>';
+  loadSuggested();
+}
+async function loadSuggested(){
+  try{
+    const{data}=await db.from('profiles').select('id,username,display_name,avatar,verified').order('followers',{ascending:false}).limit(10);
+    const e=$('sres');if(!e)return;
+    const others=(data||[]).filter(u=>!ST.user||u.id!==ST.user.id);
+    if(!others.length){e.innerHTML='<div style="text-align:center;color:var(--muted);font-size:12px;padding:16px">No creators yet — invite people to join! 🙏</div>';return;}
+    e.innerHTML=others.map(u=>'<div class="row"><div style="font-size:18px">'+(u.avatar||'👤')+'</div><div style="flex:1"><div style="font-family:Syne,sans-serif;font-size:11px;font-weight:700">'+(u.display_name||u.username)+(u.verified?' ✓':'')+'</div><div style="font-size:10px;color:var(--muted)">@'+u.username+'</div></div><button class="btn '+(ST.following[u.id]?'bt-glass':'bt-teal')+' bt-sm" onclick="toggleFollow(\''+u.id+'\',\''+esc(u.display_name||u.username)+'\')">'+(ST.following[u.id]?'Following':'Follow')+'</button></div>').join('');
+  }catch(e){const el=$('sres');if(el)el.innerHTML='<div style="text-align:center;color:var(--muted);font-size:12px;padding:16px">Could not load creators</div>';}
+}
+async function doSearch(q){
+  if(!q||q.length<2)return;
+  try{const{data}=await db.from('profiles').select('id,username,display_name,avatar,verified').or('username.ilike.%'+q+'%,display_name.ilike.%'+q+'%').limit(10);const e=$('sres');if(e&&data&&data.length)e.innerHTML=data.map(u=>'<div class="row"><div style="font-size:18px">'+(u.avatar||'👤')+'</div><div style="flex:1"><div style="font-family:Syne,sans-serif;font-size:11px;font-weight:700">'+(u.display_name||u.username)+(u.verified?' ✓':'')+'</div><div style="font-size:10px;color:var(--muted)">@'+u.username+'</div></div><button class="btn bt-glass bt-sm" onclick="toast(\'Following '+(u.display_name||u.username)+'\')">Follow</button></div>').join('');}catch(e){}
+}
+
+// ═══ ADMIN ═══
+function rAdmin(p){
+  p.innerHTML='<div style="padding:13px 11px 0"><div class="ph">Admin Panel</div><div class="ps">KingdomShift.Live · Platform Control</div><div style="display:flex;align-items:center;gap:6px;background:rgba(0,212,106,.05);border:1px solid rgba(0,212,106,.12);border-radius:9px;padding:7px 11px;margin-bottom:12px"><div style="width:6px;height:6px;border-radius:50%;background:var(--green)"></div><span style="font-family:Syne,sans-serif;font-size:11px;font-weight:700;color:var(--green)">PLATFORM ONLINE</span><span style="margin-left:auto;font-size:10px;color:var(--muted)">Supabase ✅ · ZegoCloud ✅ · Stripe ✅</span></div></div><div class="astat">'+
+  [['💰','$0','REVENUE'],['🔴','LIVE','STREAMING'],['🪙',ST.coins,'COINS'],['🚨','0','REPORTS'],['✅','DB','SUPABASE'],['💳','ON','STRIPE']].map(s=>'<div class="asc"><div class="asc-i">'+s[0]+'</div><div class="asc-n">'+s[1]+'</div><div class="asc-l">'+s[2]+'</div></div>').join('')+
+  '</div><div style="padding:0 11px">'+
+  [['🎁','Gift System',[['Split','80% Platform · 20% Creator'],['Gifts','8 tiers'],['Coin value','$0.01/coin']]],['🪙','Coin Packages',[['Packages','6 active'],['Platform','80%'],['Stripe','2.9%']]],['💸','Payouts',[['Gate','5,000 followers'],['Min','$50'],['Date','15th monthly']]],['📡','ZegoCloud',[['App ID','610561179'],['Status','✅ Connected'],['Quota','10K min/mo free']]],['🔐','Auth',[['Provider','Supabase Auth'],['Status','✅ Connected'],['Ref','tssxbezcrcxl...']]],['💳','Stripe',[['Status','✅ Connected'],['Mode','Live'],['Key','pk_live_51RF3...']]]].map(sec=>'<div class="asec"><div class="as-h"><span style="font-size:15px">'+sec[0]+'</span><span class="as-hl">'+sec[1]+'</span><span style="color:var(--dim);margin-left:auto">›</span></div><div class="as-bd">'+sec[2].map(r=>'<div class="as-r"><span class="as-rl">'+r[0]+'</span><span style="font-weight:600">'+r[1]+'</span></div>').join('')+'</div></div>').join('')+
+  '</div><div style="height:32px"></div>';
+}
+
+// ═══ LEGAL ═══
+function legalPage(title,date,items,color){return '<div class="bbar"><button class="bbtn" onclick="go(\'settings\')">‹</button><div style="font-family:Syne,sans-serif;font-size:14px;font-weight:800'+(color?';color:'+color:'')+'">'+title+'</div></div><div class="lwrap"><div class="lt"'+(color?' style="color:'+color+'"':'')+'>'+title+'</div><div class="ld8">'+date+'</div>'+items.map(it=>'<div style="margin-bottom:14px"><div class="lh2"'+(color?' style="color:'+color+'"':'')+'>'+it[0]+'</div><p class="lp">'+it[1]+'</p></div>').join('')+'</div>';}
+function rPrivacy(p){p.innerHTML=legalPage('Privacy Policy','Last updated: June 2026 · KingdomShift Collective',[['Introduction','KingdomShift.Live is operated by KingdomShift Collective.'],['Information We Collect','We collect your name, email, username, and profile information.'],['How We Use It','We use it to provide our services. <strong>We will never sell your personal data.</strong>'],['Data Security','Stored securely in Supabase, encrypted in transit and at rest.'],['Your Rights','Access, correct, or delete your information any time in Settings.'],['Contact','support@kingdomshift.live']]);}
+function rTerms(p){p.innerHTML=legalPage('Terms of Service','Last updated: June 2026 · KingdomShift Collective',[['Acceptance','By creating an account you agree to these Terms.'],['Eligibility','You must be at least 13 years old.'],['Responsibilities','You are responsible for activity under your account.'],['Content','All content must comply with Community Standards.'],['Revenue','Rates governed by the Creator Agreement. Rates never decrease.'],['Changes','60 days written notice before any changes.']]);}
+function rCreator(p){p.innerHTML=legalPage('Creator Agreement','Last updated: June 2026 · KingdomShift Collective',[['Platform Promise','Built with faith. You share revenue only when you earn.'],['Revenue Splits','<strong>Live Gifts:</strong> 80/20. <strong>Shop:</strong> 20/77/3. <strong>Subscriptions:</strong> 30/62/8. <strong>Tithes:</strong> 5/95.'],['Withdrawal','5,000 followers required. $50 minimum. Paid on the 15th.'],['Locked Forever','Rates never go down. 60 days notice for any change.']]);}
+function rChild(p){p.innerHTML=legalPage('Child Safety','Last updated: June 2026',[['Our Commitment','Zero tolerance for CSAM or content that exploits or harms minors.'],['Reporting','All CSAM violations reported immediately to NCMEC and authorities.'],['Contact','support@kingdomshift.live']],'#00C9C8');}
+function rDelete(p){p.innerHTML='<div class="bbar"><button class="bbtn" onclick="go(\'settings\')">‹</button><div style="font-family:Syne,sans-serif;font-size:14px;font-weight:800;color:var(--red)">Delete Account</div></div><div style="padding:14px"><div style="background:rgba(255,59,85,.05);border:1px solid rgba(255,59,85,.12);border-radius:12px;padding:18px"><p style="font-size:13px;color:var(--muted);line-height:1.8;margin-bottom:14px">To delete your account, email us. All data permanently deleted within 30 days.</p><div style="background:rgba(0,0,0,.3);border-radius:8px;padding:11px;text-align:center"><div style="font-family:Syne,sans-serif;font-size:13px;color:var(--teal)">support@kingdomshift.live</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Subject: Account Deletion Request</div></div></div></div>';}
+function rGuide(p){
+  p.innerHTML='<div class="bbar"><button class="bbtn" onclick="go(\'live\')">‹</button><div style="font-family:Syne,sans-serif;font-size:14px;font-weight:800">Live Streaming Setup</div></div><div style="padding:12px"><div class="sct" style="padding:4px 0 8px">📱 EASIEST — IN BROWSER</div><div class="gstep"><div class="gs-n">✓</div><div style="flex:1"><div class="gs-t">Just tap "Go Live"</div><div class="gs-d">On the Live page, tap the pink Go Live button. Your camera launches instantly through ZegoCloud — no other app needed. This is the easiest way.</div></div></div><div class="sct" style="padding:12px 0 8px">💻 ADVANCED — OBS STUDIO</div>'+
+  [['1','Download OBS Studio','Free from obsproject.com.',''],['2','Get Stream Key','From your Creator Dashboard.',''],['3','Configure','Settings → Stream → Custom','rtmp://live.kingdomshift.live/stream'],['4','Start','Click Start Streaming.','']].map(s=>'<div class="gstep"><div class="gs-n">'+s[0]+'</div><div style="flex:1"><div class="gs-t">'+s[1]+'</div><div class="gs-d">'+s[2]+'</div>'+(s[3]?'<div class="gs-c">'+s[3]+'</div>':'')+'</div></div>').join('')+'<div style="height:32px"></div></div>';
+}
+
+// ═══ START ═══
+// Remove any old service worker + caches that were pinning stale versions
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister())).catch(()=>{});
+}
+if(window.caches&&caches.keys){caches.keys().then(ks=>ks.forEach(k=>caches.delete(k))).catch(()=>{});}
+window.addEventListener('DOMContentLoaded',boot);
+</script>
+</body>
+</html>
