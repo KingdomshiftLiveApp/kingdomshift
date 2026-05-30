@@ -12,7 +12,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://js.stripe.com/v3/"></script>
-<script src="https://unpkg.com/zego-uikit-prebuilt/zego-uikit-prebuilt.js"></script>
+<script src="https://unpkg.com/@zegocloud/zego-uikit-prebuilt@2.13.0/zego-uikit-prebuilt.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 :root{--teal:#00C9C8;--gold:#C9A227;--gold2:#F0C040;--pink:#FF2D9B;--black:#050505;--dark:#0A0A0A;--card:#101012;--card2:#16161A;--text:#F0EDE6;--muted:#7E8C99;--dim:#3A4651;--green:#00D46A;--red:#FF3B55;--purple:#9B5DE5;--border:rgba(0,201,200,.1);--glass:rgba(255,255,255,.03);}
@@ -451,7 +451,19 @@ async function launchStream(){
   openStream(sid,'host');
 }
 async function joinStream(sid){if(!ST.user){toast('Please sign in to watch');return;}openStream(sid,'audience');}
+function ensureZego(cb){
+  if(typeof ZegoUIKitPrebuilt!=='undefined'){cb();return;}
+  toast('Loading live engine...');
+  const s=document.createElement('script');
+  s.src='https://unpkg.com/@zegocloud/zego-uikit-prebuilt@2.13.0/zego-uikit-prebuilt.js';
+  s.onload=()=>{if(typeof ZegoUIKitPrebuilt!=='undefined')cb();else toast('Live engine failed to load — check connection');};
+  s.onerror=()=>toast('Live engine failed to load — check connection');
+  document.head.appendChild(s);
+}
 function openStream(sid,role){
+  ensureZego(()=>doOpenStream(sid,role));
+}
+function doOpenStream(sid,role){
   const p=$('page'),isHost=role==='host';
   p.innerHTML='<div class="sview"><div class="scont" id="zego"></div><button class="sx" onclick="'+(isHost?'endStream(\''+sid+'\')':'go(\'live\')')+'" style="'+(isHost?'top:12px;right:12px;background:var(--red);color:#fff':'top:12px;left:12px;background:rgba(0,0,0,.75);color:var(--text);border:1px solid var(--border);backdrop-filter:blur(8px)')+'">'+(isHost?'■ End Stream':'← Leave')+'</button></div>';
   try{
